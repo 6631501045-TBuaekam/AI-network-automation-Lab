@@ -1,12 +1,12 @@
 ! PRACTICE ONLY - simulates the instructor's reset (acceptance test step 1).
-! Removes the data-plane config pushed by the system but keeps management SSH (Gi0/3).
+! Removes the data-plane config pushed by the system but keeps management SSH (Fa1/1).
 ! Run on R1 and R2 between rehearsals. Never during the final demonstration.
 enable
 configure terminal
 no router ospf 1
-default interface GigabitEthernet0/0
-default interface GigabitEthernet0/1
-interface range GigabitEthernet0/0 - 1
+default interface FastEthernet0/0
+default interface FastEthernet1/0
+interface range FastEthernet0/0 , FastEthernet1/0
  shutdown
  exit
 end

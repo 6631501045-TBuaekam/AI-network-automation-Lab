@@ -4,14 +4,14 @@
 # The device id (R1, R2) must match the router names in the diagram ("router1" -> R1 also works).
 devices:
   R1:
-    host: 192.168.100.11      # R1 management IP (e.g. GigabitEthernet0/3)
+    host: 192.168.192.11      # R1 management IP (FastEthernet1/1)
     port: 22
     # Optional - only if auto-detection fails (management IP is NATed / different):
-    # mgmt_interface: GigabitEthernet0/3
+    # mgmt_interface: FastEthernet1/1
     # Optional cabling hints; otherwise the UI suggests and YOU confirm the mapping:
     # interface_hints:
-    #   10.0.0.0/24: GigabitEthernet0/0
-    #   10.1.0.0/24: GigabitEthernet0/1
+    #   10.0.0.0/24: FastEthernet0/0
+    #   10.1.0.0/24: FastEthernet1/0
   R2:
-    host: 192.168.100.12
+    host: 192.168.192.12
     port: 22

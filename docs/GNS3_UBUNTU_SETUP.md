@@ -77,6 +77,12 @@ Cabling:
 For the Cloud node: right-click > *Configure* > Ethernet interfaces > tick
 *Show special Ethernet interfaces* if needed > add **eth0** (the GNS3 VM's host-only NIC).
 
+> **This repo's lab files are set for a Cisco 7200 build** (no IOSv image available):
+> Fa0/0 = LAN, Fa1/0 = R1-R2 link, Fa1/1 = management on MGMT-SW, and the management
+> network is the existing VMnet1 subnet 192.168.192.0/24 (R1 .11, R2 .12). The files
+> `gns3/*.txt` and `inventory/devices.example.yaml` use those values; read Gi0/0, Gi0/1 and
+> Gi0/3 in this guide as Fa0/0, Fa1/0 and Fa1/1.
+
 > Use any cabling you like - the system does not hard-code interface names. The review page
 > shows the discovered interfaces and you confirm which one goes to which network.
 

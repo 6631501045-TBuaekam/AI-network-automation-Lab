@@ -1,4 +1,4 @@
-! R2 - out-of-band management baseline (Cisco IOSv)
+! R2 - out-of-band management baseline (Cisco 7200 in GNS3)
 ! Replace <ROUTER_PASSWORD> with the same value you put in .env (ROUTER_SSH_PASSWORD).
 enable
 configure terminal
@@ -10,9 +10,9 @@ crypto key generate rsa general-keys modulus 2048
 ip ssh version 2
 ip ssh time-out 60
 ip ssh authentication-retries 3
-interface GigabitEthernet0/3
+interface FastEthernet1/1
  description OOB-MGMT - do not modify
- ip address 192.168.100.12 255.255.255.0
+ ip address 192.168.192.12 255.255.255.0
  no shutdown
  exit
 line vty 0 4
