@@ -1,0 +1,117 @@
+# AI Network Automation System - run on the Ubuntu Server VM:
+#   cp .env.example .env && nano .env                      # set tokens, API key, router SSH creds
+#   cp inventory/devices.example.yaml inventory/devices.yaml  # set R1/R2 management IPs
+#   docker compose up -d --build
+# Web UI: http://<ubuntu-ip>:8000     Kafka UI: http://<ubuntu-ip>:8080
+name: ai-netauto
+
+services:
+  kafka:
+    image: apache/kafka:3.8.1
+    container_name: netauto-kafka
+    hostname: kafka
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 > /dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 15
+      start_period: 20s
+    restart: unless-stopped
+
+  # one-shot: create the job topic (3 partitions, keyed by device_id)
+  kafka-init:
+    image: apache/kafka:3.8.1
+    depends_on:
+      kafka:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists
+        --topic network-config-jobs --partitions 3 --replication-factor 1 &&
+        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --describe --topic network-config-jobs
+    restart: "no"
+
+  kafka-ui:
+    image: ghcr.io/kafbat/kafka-ui:latest
+    container_name: netauto-kafka-ui
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+    environment:
+      KAFKA_CLUSTERS_0_NAME: netauto
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_READONLY: "true"
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    container_name: netauto-backend
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+    environment:
+      # only what the backend needs - it never receives router credentials
+      AI_PROVIDER: ${AI_PROVIDER:-anthropic}
+      AI_MODEL: ${AI_MODEL:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:?set ADMIN_TOKEN in .env}
+      WORKER_TOKEN: ${WORKER_TOKEN:?set WORKER_TOKEN in .env}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC: network-config-jobs
+      INVENTORY_PATH: /config/devices.yaml
+      OSPF_TRANSIT_P2P: ${OSPF_TRANSIT_P2P:-true}
+      DISCOVERY_MAX_AGE_MIN: ${DISCOVERY_MAX_AGE_MIN:-120}
+      PUBLIC_BASE_URL: http://backend:8000
+    volumes:
+      - ./inventory/devices.yaml:/config/devices.yaml:ro
+      - backend-data:/data
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  worker:
+    build: ./worker
+    depends_on:
+      backend:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+    environment:
+      # only what the worker needs - it never receives the AI API key
+      BACKEND_URL: http://backend:8000
+      WORKER_TOKEN: ${WORKER_TOKEN:?set WORKER_TOKEN in .env}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_TOPIC: network-config-jobs
+      KAFKA_GROUP_ID: netauto-workers
+      INVENTORY_PATH: /config/devices.yaml
+      ROUTER_SSH_USERNAME: ${ROUTER_SSH_USERNAME:?set ROUTER_SSH_USERNAME in .env}
+      ROUTER_SSH_PASSWORD: ${ROUTER_SSH_PASSWORD:?set ROUTER_SSH_PASSWORD in .env}
+      ROUTER_ENABLE_SECRET: ${ROUTER_ENABLE_SECRET:-}
+      SSH_TIMEOUT: ${SSH_TIMEOUT:-15}
+      SSH_HOST_KEY_POLICY: ${SSH_HOST_KEY_POLICY:-accept-new}
+      VERIFY_TIMEOUT: ${VERIFY_TIMEOUT:-180}
+    volumes:
+      - ./inventory/devices.yaml:/config/devices.yaml:ro
+      - worker-data:/data
+    restart: unless-stopped
+
+volumes:
+  backend-data:
+  worker-data:

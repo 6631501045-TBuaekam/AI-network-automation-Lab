@@ -1,0 +1,61 @@
+"""Runtime settings, read from environment variables only (no secrets in code)."""
+import os
+
+
+def _env(name: str, default: str | None = None) -> str | None:
+    """Read NAME, or the contents of the file named by NAME_FILE (Docker secrets)."""
+    file_var = os.getenv(f"{name}_FILE")
+    if file_var and os.path.exists(file_var):
+        with open(file_var, encoding="utf-8") as fh:
+            return fh.read().strip()
+    value = os.getenv(name)
+    return value if value not in (None, "") else default
+
+
+def _bool(name: str, default: bool) -> bool:
+    v = _env(name)
+    if v is None:
+        return default
+    return v.strip().lower() in ("1", "true", "yes", "on")
+
+
+class Settings:
+    def __init__(self) -> None:
+        self.data_dir = _env("DATA_DIR", "/data")
+        self.db_path = _env("DB_PATH", os.path.join(self.data_dir, "netauto.db"))
+        self.upload_dir = _env("UPLOAD_DIR", os.path.join(self.data_dir, "uploads"))
+        self.inventory_path = _env("INVENTORY_PATH", "/config/devices.yaml")
+
+        # AI provider: anthropic | openai | mock (mock = offline fixture, development only)
+        self.ai_provider = (_env("AI_PROVIDER", "anthropic") or "anthropic").lower()
+        self.ai_model = _env("AI_MODEL")
+        self.anthropic_api_key = _env("ANTHROPIC_API_KEY")
+        self.openai_api_key = _env("OPENAI_API_KEY")
+        self.ai_timeout = float(_env("AI_TIMEOUT", "120"))
+        self.mock_ai_fixture = _env("MOCK_AI_FIXTURE", "/app/fixtures/mock_ai_response.json")
+
+        # Auth
+        self.admin_token = _env("ADMIN_TOKEN")
+        self.worker_token = _env("WORKER_TOKEN")
+
+        # Kafka
+        self.kafka_enabled = _bool("KAFKA_ENABLED", True)
+        self.kafka_bootstrap = _env("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
+        self.kafka_topic = _env("KAFKA_TOPIC", "network-config-jobs")
+
+        # Behaviour
+        self.discovery_max_age_min = int(_env("DISCOVERY_MAX_AGE_MIN", "120"))
+        self.ospf_transit_p2p = _bool("OSPF_TRANSIT_P2P", True)
+        self.job_lease_seconds = int(_env("JOB_LEASE_SECONDS", "600"))
+        self.max_upload_mb = int(_env("MAX_UPLOAD_MB", "10"))
+        self.public_base_url = _env("PUBLIC_BASE_URL", "http://backend:8000")
+
+
+settings = Settings()
+
+
+def reload_settings() -> Settings:
+    """Used by tests after changing environment variables."""
+    global settings
+    settings.__init__()
+    return settings

@@ -1,0 +1,10 @@
+.env
+*.env
+!.env.example
+inventory/devices.yaml
+secrets/
+__pycache__/
+*.pyc
+.pytest_cache/
+evidence/*.png
+!evidence/.gitkeep

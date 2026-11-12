@@ -1,0 +1,17 @@
+# Device inventory: management (out-of-band) SSH addresses provided by the instructor.
+# Copy to inventory/devices.yaml and edit. No credentials here - they live in .env (worker only).
+#
+# The device id (R1, R2) must match the router names in the diagram ("router1" -> R1 also works).
+devices:
+  R1:
+    host: 192.168.100.11      # R1 management IP (e.g. GigabitEthernet0/3)
+    port: 22
+    # Optional - only if auto-detection fails (management IP is NATed / different):
+    # mgmt_interface: GigabitEthernet0/3
+    # Optional cabling hints; otherwise the UI suggests and YOU confirm the mapping:
+    # interface_hints:
+    #   10.0.0.0/24: GigabitEthernet0/0
+    #   10.1.0.0/24: GigabitEthernet0/1
+  R2:
+    host: 192.168.100.12
+    port: 22

@@ -1,0 +1,6 @@
+# Paramiko is pinned to 3.5.x on purpose: Paramiko 4/5 removed the ssh-rsa host key and
+# diffie-hellman-group14-sha1 algorithms that Cisco IOSv 15.x still uses.
+paramiko==3.5.1
+confluent-kafka==2.16.1
+httpx==0.28.1
+PyYAML==6.0.3

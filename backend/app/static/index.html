@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Network Automation</title>
+<link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">◈</span>
+    <div><h1>AI Network Automation</h1><p>Diagram → AI plan → review → approval → Kafka → worker → OSPF</p></div>
+  </div>
+  <div class="topbar-right">
+    <span id="health" class="pill">checking…</span>
+    <a id="kafkaUiLink" class="pill link" target="_blank" rel="noopener">Kafka UI ↗</a>
+    <label class="token">Admin token
+      <input id="adminToken" type="password" autocomplete="off" placeholder="required to approve/deploy">
+    </label>
+  </div>
+</header>
+
+<nav class="rail" id="rail">
+  <div data-step="upload">1 Upload</div><div data-step="generate">2 AI analyse</div>
+  <div data-step="review">3 Review</div><div data-step="approve">4 Approve</div>
+  <div data-step="deploy">5 Kafka + Worker</div><div data-step="verify">6 Verify</div>
+  <span id="planBadge" class="plan-badge">no plan</span>
+</nav>
+
+<main>
+  <!-- 1 -->
+  <section class="card" id="sec-upload">
+    <h2><span class="num">1</span> Upload topology diagram</h2>
+    <div class="grid2">
+      <div>
+        <label class="drop" id="drop">
+          <input id="file" type="file" accept="image/png,image/jpeg">
+          <span>Drop a PNG/JPG here or click to choose</span>
+        </label>
+        <label class="lbl" for="requirements">Written requirements (optional - e.g. routing table from the hand-out)</label>
+        <textarea id="requirements" rows="4" placeholder="Paste any requirement text that is not in the image. Leave empty to rely on the image only."></textarea>
+        <button id="btnUpload" class="btn" disabled>Upload diagram</button>
+      </div>
+      <div class="preview" id="preview"><span class="muted">Preview appears here</span></div>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="card" id="sec-generate">
+    <h2><span class="num">2</span> Generate - AI diagram analysis</h2>
+    <div class="actions">
+      <button id="btnGenerate" class="btn primary" disabled>Generate</button>
+      <span id="aiInfo" class="muted"></span>
+    </div>
+    <div id="ambiguities"></div>
+    <details id="jsonBox"><summary>Structured topology JSON</summary>
+      <pre id="topologyJson" class="code"></pre>
+      <div class="actions">
+        <button id="btnEditJson" class="btn small">Edit JSON</button>
+        <button id="btnSaveJson" class="btn small" hidden>Save edits (admin)</button>
+      </div>
+      <textarea id="topologyEdit" class="code" rows="20" hidden></textarea>
+    </details>
+    <h3>Interface discovery <span class="muted">(read-only SSH via Kafka → worker; the AI never connects to routers)</span></h3>
+    <table class="tbl" id="discoveryTbl"><thead><tr><th>Router</th><th>Mgmt host</th><th>Status</th><th>Mgmt interface</th><th>Data interfaces</th></tr></thead><tbody></tbody></table>
+    <button id="btnDiscover" class="btn small">Re-run discovery</button>
+  </section>
+
+  <!-- 3 -->
+  <section class="card" id="sec-review">
+    <h2><span class="num">3</span> Review - configurations &amp; validation</h2>
+    <div class="actions"><button id="btnReview" class="btn primary" disabled>Review</button>
+      <span id="reviewStatus" class="muted"></span></div>
+    <div id="mapping"></div>
+    <div id="validation"></div>
+    <div id="configs"></div>
+  </section>
+
+  <!-- 4 -->
+  <section class="card" id="sec-approve">
+    <h2><span class="num">4</span> Administrator approval</h2>
+    <div class="approve-row">
+      <input id="approver" placeholder="Approver name">
+      <label class="check"><input id="approveConfirm" type="checkbox"> I reviewed the proposed configurations and validation results and approve deployment</label>
+      <button id="btnApprove" class="btn primary" disabled>Approve</button>
+    </div>
+    <div id="approvalInfo" class="muted"></div>
+  </section>
+
+  <!-- 5 & 6 -->
+  <section class="card" id="sec-deploy">
+    <h2><span class="num">5</span> Deploy &amp; monitor</h2>
+    <div class="actions"><button id="btnDeploy" class="btn danger" disabled>Deploy</button>
+      <span id="deployInfo" class="muted"></span></div>
+    <div id="summary"></div>
+    <table class="tbl jobs" id="jobsTbl">
+      <thead><tr><th>Job</th><th>Type</th><th>Router</th><th>Status</th><th>Created</th><th>Started</th><th>Finished</th><th>Kafka</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+</main>
+<div id="toast"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>
