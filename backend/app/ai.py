@@ -37,6 +37,7 @@ Example shape (values are illustrative, NOT the answer):
 Rules:
 - "interfaces" lists ROUTER interfaces only (one entry per router per connected network).
   Do NOT invent physical interface names (e.g. GigabitEthernet0/0); those are discovered later.
+  Missing interface names are therefore expected: never list them as an ambiguity.
 - "hosts" lists end hosts (PCs/servers) with their IP, prefix length and default gateway.
 - Diagrams often show only the host part (".1", ".10") next to a device and the network
   ("10.0.0.0/24") on the link. Combine them into full addresses and use the network's prefix.
@@ -154,7 +155,7 @@ def _openai(image: bytes, media_type: str, requirements: str | None) -> tuple[st
 
 def _local(image: bytes, media_type: str, requirements: str | None) -> tuple[str, str]:
     """A model on your own machine (Ollama by default). Needs a vision-capable model."""
-    model = settings.ai_model or "llama3.2-vision"
+    model = settings.ai_model or "qwen2.5vl:7b"
     return _chat_completions("Local model", settings.local_ai_base_url, settings.local_ai_api_key,
                              model, image, media_type, requirements, settings.local_ai_timeout)
 
@@ -167,6 +168,20 @@ def _mock(image: bytes, media_type: str, requirements: str | None) -> tuple[str,
 
 PROVIDERS = {"anthropic": _anthropic, "openai": _openai, "local": _local, "mock": _mock}
 
+# Physical interface names never come from the diagram (they are discovered over SSH and the
+# admin confirms the mapping), so an AI "ambiguity" about them can never be acted on. Smaller
+# models report one anyway, which would block approval - drop them.
+_IFNAME_AMBIGUITY = re.compile(r"interface[\s_-]*names?", re.I)
+
+
+def _drop_interface_name_ambiguities(ambiguities: list) -> list:
+    kept = []
+    for a in ambiguities:
+        if isinstance(a, dict) and _IFNAME_AMBIGUITY.search(f"{a.get('item', '')} {a.get('issue', '')}"):
+            continue
+        kept.append(a)
+    return kept
+
 
 def analyze_diagram(image: bytes, media_type: str, requirements: str | None = None) -> dict:
     provider = settings.ai_provider
@@ -177,4 +192,5 @@ def analyze_diagram(image: bytes, media_type: str, requirements: str | None = No
     for key in ("devices", "networks", "interfaces", "hosts", "links", "ambiguities"):
         topology.setdefault(key, [])
     topology.setdefault("routing", {})
+    topology["ambiguities"] = _drop_interface_name_ambiguities(topology["ambiguities"] or [])
     return {"topology": topology, "raw": raw, "provider": provider, "model": model}

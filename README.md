@@ -28,7 +28,7 @@ automatically.
 | `inventory/` | Router management addresses (no credentials) |
 | `gns3/` | Router management baselines, practice reset script, VPCS commands |
 | `docs/` | GNS3 + Ubuntu build guide, architecture & test report |
-| `tests/` | 27 automated tests incl. an SSH-based simulated IOS lab |
+| `tests/` | 28 automated tests incl. an SSH-based simulated IOS lab |
 | `samples/` | The exam diagram as PNG (with and without the requirements table) |
 
 ---
@@ -91,7 +91,7 @@ Set these in `.env`, then `docker compose up -d backend`. The model must accept 
 | Claude (default) | `AI_PROVIDER=anthropic`, `ANTHROPIC_API_KEY=...` |
 | OpenAI | `AI_PROVIDER=openai`, `OPENAI_API_KEY=...` |
 | Any OpenAI-compatible cloud API (Gemini, Groq, OpenRouter, GitHub Models - several have free keys) | `AI_PROVIDER=openai`, `OPENAI_API_KEY=<that service's key>`, `OPENAI_BASE_URL=<its URL, listed in .env.example>`, `AI_MODEL=<its vision model>` |
-| Local model, no key (Ollama on the Docker host) | install Ollama, `ollama pull llama3.2-vision`, then `AI_PROVIDER=local` |
+| Local model, no key (Ollama on the Docker host) | install Ollama, `ollama pull qwen2.5vl:7b`, then `AI_PROVIDER=local` |
 | Other local server (LM Studio, vLLM, llama.cpp) | `AI_PROVIDER=local`, `LOCAL_AI_BASE_URL=http://host.docker.internal:<port>/v1`, `AI_MODEL=<model>` |
 
 For a local model on Linux, let Ollama listen beyond localhost so the backend container
@@ -100,6 +100,12 @@ can reach it: `sudo systemctl edit ollama` → add `[Service]` and
 analysis can take several minutes (`LOCAL_AI_TIMEOUT`, default 600 s), and small local
 models read diagrams less reliably than Claude - check every value on the Review page.
 If a service rejects `response_format`, set `AI_JSON_MODE=false`.
+
+**Tested local model: `qwen2.5vl:7b`** (Ollama, RTX 4060 laptop GPU, ~25-35 s per analysis).
+From the exam image alone it is right most of the time but sometimes misses or misreads
+one address; validation then shows an error. Paste the written requirements (the
+addressing/OSPF table) into the requirements box before **Generate**: in testing every value
+was then correct and validation passed on every run.
 
 ### Optional rehearsal without GNS3
 `docker compose -f docker-compose.yml -f docker-compose.sim.yml up -d --build` swaps the
@@ -165,7 +171,7 @@ Evidence screenshots for submission (save in `evidence/`):
 ## 7. Tests
 ```bash
 pip install -r backend/requirements.txt -r worker/requirements.txt pytest
-python -m pytest -q tests/     # 27 passed
+python -m pytest -q tests/     # 28 passed
 ```
 `tests/test_end_to_end.py` runs the complete workflow over real SSH against simulated IOS
 routers: discovery, review, approval, deploy, verification (FULL + routes + ping),

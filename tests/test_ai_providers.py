@@ -73,7 +73,7 @@ def test_local_needs_no_key(capture, monkeypatch):
     c = capture[0]
     assert c["url"] == "http://host.docker.internal:11434/v1/chat/completions"
     assert "Authorization" not in c["headers"]
-    assert c["body"]["model"] == "llama3.2-vision"
+    assert c["body"]["model"] == "qwen2.5vl:7b"
     assert c["timeout"] == 600
     assert out["provider"] == "local"
 
@@ -113,6 +113,27 @@ def test_content_parts_are_joined(monkeypatch):
     try:
         out = _run(monkeypatch, AI_PROVIDER="local")
         assert out["topology"] == {**json.loads(FIXTURE), **out["topology"]}
+    finally:
+        monkeypatch.setenv("AI_PROVIDER", "mock")
+        reload_settings()
+
+
+def test_interface_name_ambiguities_are_dropped(monkeypatch):
+    for v in AI_VARS:
+        monkeypatch.delenv(v, raising=False)
+    topo = json.loads(FIXTURE)
+    topo["ambiguities"] = [
+        {"item": "R1 interface names", "issue": "not shown in the diagram", "severity": "blocking"},
+        {"item": "R1-R2", "issue": "interface name unknown", "severity": "blocking"},
+        {"item": "R2 router-id", "issue": "not shown in the diagram", "severity": "blocking"},
+        {"item": "PC gateways", "issue": "inferred", "severity": "warning"},
+    ]
+    monkeypatch.setattr(ai.httpx, "post", lambda url, **kw: httpx.Response(
+        200, json={"choices": [{"message": {"content": json.dumps(topo)}}]},
+        request=httpx.Request("POST", url)))
+    try:
+        out = _run(monkeypatch, AI_PROVIDER="local")
+        assert [a["item"] for a in out["topology"]["ambiguities"]] == ["R2 router-id", "PC gateways"]
     finally:
         monkeypatch.setenv("AI_PROVIDER", "mock")
         reload_settings()
