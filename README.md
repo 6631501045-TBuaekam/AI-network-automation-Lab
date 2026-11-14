@@ -28,8 +28,9 @@ automatically.
 | `inventory/` | Router management addresses (no credentials) |
 | `gns3/` | Router management baselines, practice reset script, VPCS commands |
 | `docs/` | GNS3 + Ubuntu build guide, architecture & test report |
-| `tests/` | 40 automated tests incl. an SSH-based simulated IOS lab |
+| `tests/` | 43 automated tests incl. an SSH-based simulated IOS lab |
 | `samples/` | The exam diagram as PNG (with and without the requirements table) |
+| `evidence/` | Screenshots and console output of the live GNS3 run (see `docs/REPORT.md` §5.2) |
 
 ---
 
@@ -60,7 +61,10 @@ VTY/SSH lines can never be touched; alternative topologies work (nothing hard-co
 Follow **[docs/GNS3_UBUNTU_SETUP.md](docs/GNS3_UBUNTU_SETUP.md)** (GNS3 topology, management
 network, Ubuntu Server VM, Docker install). Then come back here.
 
-## 3. Run the system (Ubuntu Server VM)
+## 3. Run the system (Ubuntu Server VM, or Docker Desktop on the GNS3 host)
+
+Any Docker host that can reach the routers' management network works. The evidence run
+used Docker Desktop on the Windows PC that hosts the GNS3 VM.
 
 ```bash
 cd ~/ai-netauto
@@ -160,7 +164,8 @@ AI, Kafka, worker, Paramiko - is real. **Not for the exam demo**; switch back wi
 | 5 | Automatic | 2 verify jobs: neighbors FULL, `10.2.0.0/24` on R1 and `10.0.0.0/24` on R2 as OSPF routes; click a job for the full show-command output |
 | 6 | Instructor: `PC1> ping 10.2.0.10` | Replies ✓ |
 
-Evidence screenshots for submission (save in `evidence/`):
+Evidence screenshots for submission (save in `evidence/` - the live run's set is already
+there, listed in `docs/REPORT.md` §5.2):
 1. UI - AI analysis JSON 2. UI - validation + proposed configs 3. UI - approval
 4. Kafka UI messages (or `scripts/show-kafka-jobs.sh`) 5. UI - jobs table SUCCESS
 6. UI - verify job details (neighbors FULL, OSPF routes) 7. `PC1> ping 10.2.0.10`
@@ -203,7 +208,7 @@ Evidence screenshots for submission (save in `evidence/`):
 ## 7. Tests
 ```bash
 pip install -r backend/requirements.txt -r worker/requirements.txt pytest
-python -m pytest -q tests/     # 40 passed
+python -m pytest -q tests/     # 43 passed
 ```
 `tests/test_end_to_end.py` runs the complete workflow over real SSH against simulated IOS
 routers: discovery, review, approval, deploy, verification (FULL + routes + ping),

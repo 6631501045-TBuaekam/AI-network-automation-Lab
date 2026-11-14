@@ -99,7 +99,10 @@ class IOSSession:
             self.client = None
 
     def __enter__(self):
-        return self.connect()
+        # open_session() hands over an already-connected session: connecting again here
+        # would leak the first SSH session (exhausting the router's VTY lines) and bypass
+        # the retry loop. Only connect when not connected yet.
+        return self if self.client is not None else self.connect()
 
     def __exit__(self, *exc):
         self.close()
