@@ -1,4 +1,4 @@
-# VPCS end hosts (PCs are not routers - configuring them is allowed)
+# PC1 and PC2 (VPCS). Setting PC addresses by hand is allowed.
 
 PC1> ip 10.0.0.10/24 10.0.0.1
 PC1> save
@@ -8,6 +8,6 @@ PC2> ip 10.2.0.10/24 10.2.0.2
 PC2> save
 PC2> show ip
 
-# Final acceptance test (after the automated deployment):
+# Final test, after the system has deployed OSPF:
 PC1> ping 10.2.0.10
 PC1> trace 10.2.0.10

@@ -1,6 +1,7 @@
-! PRACTICE ONLY - simulates the instructor's reset (acceptance test step 1).
-! Removes the data-plane config pushed by the system but keeps management SSH (Fa1/1).
-! Run on R1 and R2 between rehearsals. Never during the final demonstration.
+! PRACTICE ONLY - does what the instructor's reset does (exam step 1).
+! Removes the data-port and OSPF config but keeps management SSH (Fa1/1).
+! Not needed between runs: a new Run already removes the old config.
+! Never use it during the final demonstration.
 enable
 configure terminal
 no router ospf 1

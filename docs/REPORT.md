@@ -1,55 +1,66 @@
-# Report - AI-Driven Network Configuration and Automation Using OSPF
+# Report - AI Network Automation with OSPF
 
-**Student:** ______________________ **Date:** 2026-11-14 (evidence run) **Lab:** GNS3 3.1 (Cisco 7200 ×2, VPCS ×2, out-of-band management switch) + Docker Compose (Docker Desktop on Windows)
+**Student:** ______________________  **Date:** ____________
 
-## 1. Objective
-Build a web-based system that turns a topology diagram into deployed, verified Cisco OSPF
-configuration, with AI limited to diagram analysis and every change gated by validation
-and explicit administrator approval before it travels through Kafka to a Python worker
-that uses Paramiko SSH.
+**Lab:** GNS3 3.1 with 2 Cisco 7200 routers and 2 VPCS PCs, plus a management switch.
+The system runs with Docker Compose (tested on Docker Desktop on the GNS3 PC).
 
-## 2. Architecture
+## 1. Goal
+Build a web system that turns a network diagram picture into working, checked Cisco OSPF
+configuration. The AI only reads the picture. Every change is checked and needs an admin's
+approval. Only then does it go through Kafka to a Python worker, which uses SSH (Paramiko).
 
-| Component | Technology | Responsibility |
+## 2. Parts of the system
+
+| Part | Made with | What it does |
 |---|---|---|
-| Web UI | HTML/JS served by FastAPI | Upload + preview, Generate, Review, Approve, Deploy, live job monitor |
-| Backend | Python 3.12, FastAPI, SQLite | Plans, AI call, topology model, config generation (Jinja2), validation, approval, Kafka producer, worker API |
-| AI | Any image-capable model: Claude (Anthropic API), OpenAI or any OpenAI-compatible vision API (`OPENAI_BASE_URL`), or a local model (`AI_PROVIDER=local`, Ollama/LM Studio). **Evidence run: Qwen2.5-VL 7B, local via Ollama** | Diagram → structured JSON (devices, networks, router interfaces, hosts, links, routing, ambiguities) |
-| Message bus | Apache Kafka 3.8 (KRaft), topic `network-config-jobs` (3 partitions, key = device id) | Decouples approval from execution; Kafka UI for inspection |
-| Worker | Python 3.12, confluent-kafka, Paramiko 3.5 | Consume, claim, re-check approval, SSH discover/deploy/verify, report |
-| GNS3 cross-check (optional, read-only) | GNS3 REST API v3 / v2, GET only | Compares the AI topology with the lab's real cables and suggests the interface mapping; warnings only |
-| Network | GNS3: R1, R2 (Cisco 7200, FastEthernet), PC1, PC2 (VPCS); management on Fa1/1, 192.168.192.0/24 | Target network |
+| Web page | HTML + JavaScript | Upload and preview, Run, Generate, Review, Approve, Deploy, job monitor |
+| Backend | Python, FastAPI, SQLite | Calls the AI, builds the network model, writes configs, checks them, handles approval, sends Kafka jobs |
+| AI | Any model that reads images: Claude, OpenAI, other OpenAI-style APIs, or a local model. **Test run: Qwen2.5-VL 7B (local)** | Picture → structured JSON (devices, networks, IPs, links, routing, unclear items) |
+| Kafka | Apache Kafka 3.8, topic `network-config-jobs` | Carries approved jobs from the backend to the worker. Kafka UI shows the messages |
+| Worker | Python, Paramiko | Reads jobs, re-checks approval, connects with SSH, deploys and verifies |
+| GNS3 check (optional) | GNS3 API, read only | Compares the AI's topology with the real lab cables and suggests ports. Warnings only |
 
-Workflow and trust boundaries:
-1. **Upload** - PNG/JPG checked by magic bytes, ≤10 MB, stored with SHA-256.
-2. **Generate** - the image (and optional written requirements from the hand-out) goes to
-   the AI with a strict schema. The prompt forbids guessing: unknown values are `null` + an
-   ambiguity (`blocking` stops approval, `warning` is shown). Physical interface names are
-   never taken from the diagram. The backend then queues **read-only discovery** jobs on
-   Kafka; the worker runs fixed `show` commands to learn the real interface names and the
-   management interface/subnet.
-3. **Review** (the **Run** button performs steps 1-3 in one click and stops here) - the backend builds a normalized model (any number of routers/LANs - nothing
-   hard-coded), suggests the interface mapping (inventory hint → GNS3 lab cable → CDP →
-   ordered; a name is only used if SSH discovery found it), renders per-router IOS config,
-   and validates. Each config starts with a clean-up of the previous plan (`no router ospf
-   <N>`, `default interface <data port>`; never the management interface), so a new plan
-   replaces an old one completely. The admin confirms the mapping.
-4. **Approve** - admin token + approver name + explicit confirmation; validation is re-run
-   at approval time; the approval stores a hash over all per-router config hashes.
-5. **Kafka** - one job per router: `{job_id, job_type, device_id, plan_id, deployment_id,
-   config_ref{url, sha256}, approval_ref}`. Config text is not in the message.
-6. **Worker** - claims the job atomically (duplicate prevention), asks the backend to
-   re-confirm approval, receives the config, recomputes its SHA-256 and compares with the
-   Kafka reference, backs up running-config, pushes line by line (stops on `%` errors),
-   saves, then re-opens SSH to prove management survived.
-7. **Verify** - after all deploy jobs succeed the backend queues verify jobs. The worker
-   polls `show ip ospf neighbor`, `show ip route ospf` and `show ip protocols` until OSPF
-   converges (or times out) and checks FULL neighbors, the opposite LAN as an `O` route,
-   process id, router-id, passive/active interfaces and advertised networks; it also pings
-   the remote host sourced from the LAN (informational).
+## 3. How a run works
+1. **Upload** - the picture (PNG/JPG) and optional hand-out text.
+2. **Generate** - the AI turns the picture into JSON. It must not guess: anything unclear
+   is listed as an "ambiguity" (blocking ones stop approval). Then the worker reads the
+   real interface names from each router over SSH, using only `show` commands.
+3. **Review** - the backend matches each network to a real router port, writes the
+   configuration and checks it. The admin confirms the port mapping.
+   The **Run** button does steps 1-3 in one click and stops here.
+4. **Approve** - needs the admin token, a name and a tick box. The checks run again.
+   The approval is tied to a fingerprint (SHA-256) of the exact configs.
+5. **Kafka** - one job per router. The job holds a reference to the approved config,
+   not the config text.
+6. **Worker** - takes the job (only once - no duplicates), asks the backend to confirm the
+   approval, checks the config fingerprint, saves a backup of the router config, applies
+   the config line by line, saves it, then opens a new SSH session to prove management
+   still works.
+7. **Verify** - the worker runs `show ip ospf neighbor`, `show ip route ospf` and
+   `show ip protocols` until OSPF is ready. It checks FULL neighbors, the remote LAN as an
+   OSPF route, process, router ID, passive and active interfaces.
 
-## 3. Generated configuration (exam topology, R1 - as deployed in the evidence run)
+## 4. The 10 lab tasks
+
+| Task | How it is done |
+|---|---|
+| 1 Web page | Upload with preview; Generate, Review, Approve and Deploy buttons (plus Run) |
+| 2 AI analysis | Image-capable model; JSON shown on the page; unclear values listed, not guessed |
+| 3 IOS and OSPF | Per-router interfaces, OSPF process 1 area 0, three networks, LAN ports passive |
+| 4 Checks and approval | Addressing, subnets, real interface names, OSPF settings, management reachability; configs shown; approval required |
+| 5 Kafka producer | Topic `network-config-jobs`; job ID, device ID, config reference |
+| 6 Worker | Consumes jobs, re-checks approval, reports progress, blocks duplicates |
+| 7 Paramiko | SSH deploy, output collected, auth/timeout errors handled, no passwords in code |
+| 8 OSPF check | The three show commands; FULL neighbors and opposite LAN learned |
+| 9 Job monitor | PENDING / RUNNING / SUCCESS / FAILED with router, times, output, results |
+| 10 End to end | Shown live: PC1 pings 10.2.0.10 (section 7) |
+
+## 5. Example config (R1, current version - see evidence/10-run2-review-cleanup.png)
 ```
+no router ospf 1                      <- clean-up of any earlier plan
+default interface FastEthernet0/0     <- (management port never included)
+default interface FastEthernet1/0
 hostname R1
 interface FastEthernet0/0
  description LAN PC1
@@ -66,88 +77,75 @@ router ospf 1
  network 10.1.0.0 0.0.0.255 area 0
  passive-interface FastEthernet0/0
 ```
-R2 is symmetrical (router-id 2.2.2.2, 10.1.0.0/24 + 10.2.0.0/24, Fa0/0 passive). The
-FastEthernet names were not typed anywhere: they come from SSH discovery on the routers.
-`ip ospf network point-to-point` on the router-to-router link (configurable with
-`OSPF_TRANSIT_P2P`) removes the 40 s DR/BDR wait so adjacency is FULL within seconds.
+R2 is the same with router ID 2.2.2.2 and networks 10.1.0.0/24 and 10.2.0.0/24.
+The names FastEthernet0/0 and 1/0 were read from the routers, not typed by anyone.
+The first three lines remove an earlier plan, so a new plan replaces an old one fully.
+`ip ospf network point-to-point` makes the R1-R2 neighbors FULL within seconds.
 
-## 4. Security and safety controls
-* AI has no network path or credentials for the routers; the worker only acts on jobs
-  the backend re-authorizes. Device addresses come from the worker's own inventory, so a
-  Kafka message cannot redirect it to another host. The GNS3 cross-check only reads the
-  GNS3 API and never contacts routers.
-* Secrets in `.env` only (git-ignored, not in the submission), split per container;
-  non-root containers; tokens compared in constant time; Kafka UI read-only.
-* Config allow-list (hostname, interface, description, ip address, no shutdown, OSPF
-  commands); management interface, VTY/SSH/AAA, static routes and reload are impossible.
-* Approval binding: editing topology/mapping revokes approval; content tampering after
-  approval is refused by both backend and worker (tested).
-* Failure handling: typed SSH errors (auth / timeout / unreachable / host-key / CLI),
-  no retry on bad credentials, retries on timeout/unreachable (`SSH_RETRIES`), pre-change
-  backup, no `write memory` after an error, lease-based recovery of jobs stuck in RUNNING.
-  Recovery: `reload` restores the last saved config, or re-apply the backup, or fix the
-  plan, re-approve and redeploy (the configuration is idempotent).
+## 6. Safety
+* The AI has no access to the routers. Only the worker has the router password, and it
+  only acts on jobs the backend confirms.
+* Secrets live only in `.env`, which is not in git and not in the submission.
+* Allowed commands are limited to interface, IP and OSPF lines. Static routes, the
+  management port, SSH/VTY settings and `reload` are refused.
+* Changing the plan after approval cancels the approval. A changed config is refused by
+  both the backend and the worker.
+* On errors: wrong passwords are not retried; network errors are retried. A backup is
+  saved first, and nothing is saved if a command fails, so `reload` restores the last good
+  config.
 
-## 5. Test results
+## 7. Test results
 
-### 5.1 Automated tests (`python -m pytest -q tests/`)
-| Suite | Tests | Result |
+### 7.1 Automated tests - 48 passed
+| Area | Tests |
+|---|---|
+| Reading router output (parsers) | 8 |
+| Planning and checks (incl. a 3-router alternative topology) | 10 |
+| Full run against simulated routers over real SSH (also: duplicate job, changed config, wrong password, second run with a new plan) | 4 |
+| AI options (cloud, local, errors) | 8 |
+| GNS3 check | 12 |
+| SSH session handling | 3 |
+| Clean-up of the previous plan | 3 |
+| **Total** | **48** |
+
+### 7.2 Live test in GNS3 (2026-11-14)
+The routers were first reset to the exam starting state (data ports empty, no OSPF,
+management on). Then everything was done **through the web page** with the full Docker
+stack: upload → AI (38 s, no unclear items) → read interface names over Kafka → Review
+(all checks PASS) → confirm mapping → Approve → Deploy → verify. 80 seconds from upload to
+DEPLOYED. No router was configured by hand.
+
+| Check | Result | Evidence |
 |---|---|---|
-| IOS output parsers (broadcast & p2p neighbors, "subnetted" & "variably subnetted" routes, CDP wrap) | 7 | Pass |
-| Planning / validation (exam topology, unconfirmed mapping, management interface refused, non-existent interface, router-id not guessed, subnet mismatch, wrong gateway, blocking ambiguity, no discovery, **3-router alternative topology**) | 10 | Pass |
-| End-to-end over SSH with simulated IOS routers (full workflow → OSPF FULL + routes + ping; duplicate Kafka delivery ignored; post-approval tampering refused; bad credentials reported) | 3 | Pass |
-| AI providers (OpenAI-compatible base URL, local model without key, JSON mode, unreachable server, interface-name ambiguities dropped) | 8 | Pass |
-| GNS3 cross-check (GET only, switch look-through, management port excluded, cabling beats ordered guess, mismatch warning, API v2/v3 detection, basic auth, unreachable/closed project) | 12 | Pass |
-| SSH session handling (exactly one SSH session per `with open_session()`, retries kept) | 3 | Pass |
-| Clean-up of the previous plan (clean-up lines first, other OSPF processes, management refused, second run with a new addressing plan leaves nothing stale, OSPF process parser) | 5 | Pass |
-| **Total** | **48** | **48 passed** |
+| Web page accepts the diagram | ✔ | evidence/01-upload.png |
+| AI made the topology JSON | ✔ | evidence/02-ai-json.png |
+| Checks passed, configs shown | ✔ | evidence/03-review.png |
+| Admin approved | ✔ | evidence/04-approve.png |
+| Kafka jobs visible (keys R1 and R2) | ✔ | evidence/05-kafka.png |
+| Worker deployed R1 and R2, verify SUCCESS | ✔ | evidence/06-jobs.png, evidence/06b-verify-details.png |
+| OSPF neighbors FULL (R1 ↔ 2.2.2.2, R2 ↔ 1.1.1.1) | ✔ | evidence/07-ospf-neighbor.png |
+| Remote LANs learned by OSPF (R1: 10.2.0.0/24, R2: 10.0.0.0/24) | ✔ | evidence/08-ospf-routes.png |
+| PC1 → 10.2.0.10 ping, 5 of 5 replies | ✔ | evidence/09-ping.png |
 
-### 5.2 Live GNS3 demonstration (2026-11-14, full Docker Compose stack)
-Routers were first reset to the instructor's starting state (`gns3/reset-dataplane.txt`:
-data-plane interfaces unassigned and shut, no OSPF, management SSH kept). The whole
-workflow was then driven **from the web UI**: upload → Generate (Qwen2.5-VL, 38 s, no
-ambiguities) → discovery via Kafka → Review (all checks PASS, GNS3 cross-check suggested
-all four ports from the real cables) → mapping confirmed → Approve → Deploy → verify.
-Total time from upload to DEPLOYED: 80 s. No router was configured by hand.
+The raw router and PC output is in `evidence/*.txt`; the run's jobs are in
+`evidence/run-jobs.json`.
 
-| Acceptance step | Result | Evidence |
-|---|---|---|
-| Frontend loads, diagram accepted | ☑ | evidence/01-upload.png |
-| AI produced topology JSON / OSPF plan | ☑ | evidence/02-ai-json.png |
-| Validation passed, configs reviewed | ☑ | evidence/03-review.png |
-| Approved by administrator | ☑ | evidence/04-approve.png |
-| Kafka jobs visible (10 messages, keys R1/R2, partitions 0 and 2) | ☑ | evidence/05-kafka.png |
-| Worker deployed R1 and R2 via Paramiko (deploy + verify SUCCESS) | ☑ | evidence/06-jobs.png, evidence/06b-verify-details.png |
-| OSPF neighbors FULL (R1 ↔ 2.2.2.2, R2 ↔ 1.1.1.1) | ☑ | evidence/07-ospf-neighbor.png |
-| Remote LAN routes learned via OSPF (R1: O 10.2.0.0/24, R2: O 10.0.0.0/24) | ☑ | evidence/08-ospf-routes.png |
-| PC1 → 10.2.0.10 ping successful (5/5, trace via 10.0.0.1 → 10.1.0.2) | ☑ | evidence/09-ping.png |
+Later the **Run** button was tested twice in a row on the same lab: run 1 from reset
+routers, run 2 over run 1's config. Both ended DEPLOYED with all jobs SUCCESS, and run 2's
+config started with the clean-up lines (evidence/10-run2-review-cleanup.png,
+evidence/11-run2-jobs.png). PC1 → 10.2.0.10 still worked afterwards.
 
-Raw console text for 07-09 is in `evidence/*.txt`; the job list of the run is in
-`evidence/run-jobs.json` and the step log in `evidence/run-log.txt`.
+### 7.3 Problems found and fixed
+* **Extra SSH sessions.** Each job opened two SSH sessions and left one open. The router
+  ran out of SSH lines and refused R1's verify. Fixed in `worker/ssh_client.py`, with a test.
+* **"Interface names missing" from small AI models.** Interface names come from the
+  routers, so this note is now ignored instead of blocking approval.
+* **Local model accuracy.** From the picture alone Qwen2.5-VL 7B sometimes misreads one
+  address (the checks catch it). With the hand-out text pasted in, every test was correct.
 
-### 5.3 Problems found during live testing and how they were fixed
-* **Leaked SSH sessions.** `open_session()` returned a connected session and the `with`
-  statement connected a second time, leaking the first session and skipping the retry
-  loop. On the router this showed up as R1 refusing SSH during verification (its VTY
-  lines filled up). Fixed in `ssh_client.py` (`__enter__` only connects when not yet
-  connected) with a regression test; the evidence run passed after the fix.
-* **Small models flag "interface names missing".** Interface names are discovered over
-  SSH, so the backend drops that kind of AI ambiguity instead of blocking approval.
-* **Local model accuracy.** From the image alone Qwen2.5-VL 7B sometimes misreads one
-  address; validation catches it. With the hand-out's requirement text pasted into the
-  requirements box (as in the evidence run) every value was correct in every test.
-
-### 5.4 Run button and clean-up (live, 2026-11-14)
-Two runs back to back on the real lab through the web UI and the Docker stack: run 1 from
-reset routers, run 2 over run 1's configuration. Each: **Run** (to Review in 38 s / 24 s,
-only open item "confirm mapping") → confirm → Approve → Deploy → all four jobs SUCCESS →
-DEPLOYED. Run 2's R1 config started with `no router ospf 1`, `default interface
-FastEthernet0/0`, `default interface FastEthernet1/0` (evidence/10-run2-review-cleanup.png,
-evidence/11-run2-jobs.png); PC1 → 10.2.0.10 still 5/5 afterwards.
-
-## 6. Conclusion
-The system satisfies the end-to-end chain Upload → AI → Review → Approval → Kafka →
-Worker → Paramiko → Verification without manual router configuration or static routes,
-demonstrated live in GNS3 with a successful PC1 → PC2 ping, and adapts to alternative
-topologies because interface names are discovered and the addressing plan is derived from
-the AI's (validated, human-confirmed) output.
+## 8. Conclusion
+The full chain works: Upload → AI → Review → Approval → Kafka → Worker → Paramiko →
+Verify, with no manual router configuration and no static routes. It was shown live in
+GNS3 with a successful PC1 → PC2 ping. It also works with other topologies, because the
+interface names are read from the routers and the plan comes from the checked,
+admin-confirmed AI output.

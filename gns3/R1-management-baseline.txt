@@ -1,8 +1,7 @@
-! R1 - out-of-band management baseline (Cisco 7200 in GNS3)
-! This represents the "independent SSH management access" the instructor provides.
-! Paste ONCE while building your practice lab. It does NOT configure the data plane
-! (Fa0/0, Fa1/0, OSPF) - that is done by the automation system.
-! Replace <ROUTER_PASSWORD> with the same value you put in .env (ROUTER_SSH_PASSWORD).
+! R1 - management access only (Cisco 7200 in GNS3). This is the instructor's part.
+! Paste once into the R1 console when you build the lab.
+! It does NOT set up Fa0/0, Fa1/0 or OSPF - the system does that.
+! First replace <ROUTER_PASSWORD> with ROUTER_SSH_PASSWORD from .env.
 enable
 configure terminal
 hostname R1

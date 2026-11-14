@@ -1,5 +1,5 @@
-! R2 - out-of-band management baseline (Cisco 7200 in GNS3)
-! Replace <ROUTER_PASSWORD> with the same value you put in .env (ROUTER_SSH_PASSWORD).
+! R2 - management access only (Cisco 7200 in GNS3). This is the instructor's part.
+! Paste once into the R2 console. First replace <ROUTER_PASSWORD> with ROUTER_SSH_PASSWORD from .env.
 enable
 configure terminal
 hostname R2

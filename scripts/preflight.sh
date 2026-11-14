@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run on the Ubuntu VM before the demo: checks config files, router reachability and the stack.
+# Run before the demo (on the machine that runs Docker): checks settings, routers and containers.
 set -u
 cd "$(dirname "$0")/.."
 ok()  { printf '  \033[32mOK\033[0m   %s\n' "$1"; }
@@ -14,10 +14,10 @@ if [ -f .env ]; then
   grep -q '^ADMIN_TOKEN=change-me' .env && bad "ADMIN_TOKEN still default"
   grep -qE '^ROUTER_SSH_PASSWORD=.+' .env && ok "router password set" || bad "ROUTER_SSH_PASSWORD empty"
   prov=$(grep -E '^AI_PROVIDER=' .env | cut -d= -f2)
-  [ "$prov" = "mock" ] && bad "AI_PROVIDER=mock - switch to anthropic/openai for the demo" || ok "AI provider: $prov"
+  [ "$prov" = "mock" ] && bad "AI_PROVIDER=mock is a fake AI - choose a real model for the demo" || ok "AI provider: $prov"
 fi
 
-echo "Router management reachability (TCP 22 from this VM)"
+echo "Router management reachability (SSH port 22 from this machine)"
 if [ -f inventory/devices.yaml ]; then
   for host in $(grep -E '^\s+host:' inventory/devices.yaml | awk '{print $2}'); do
     timeout 4 bash -c "</dev/tcp/$host/22" 2>/dev/null && ok "$host:22 reachable" || bad "$host:22 NOT reachable"
