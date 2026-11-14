@@ -100,7 +100,24 @@ def suggest_mapping(model: dict, discoveries: dict, inventory: dict,
     return mapping, notes
 
 
-def render_router(model: dict, rid: str, if_map: dict, plan_id: str, p2p_transit: bool) -> dict:
+def cleanup_plan(model: dict, rid: str, if_map: dict, discovery: dict | None) -> dict:
+    """What the config removes before applying the new one, so every run starts from a clean
+    data plane (no leftovers from an earlier plan or a different topology):
+    * `no router ospf N` for the plan's process and every OSPF process discovery found
+      (IOS accepts it silently when the process does not exist);
+    * `default interface X` for every discovered data-plane interface plus the mapped ones.
+    The management interface is never included (it is excluded from data_interfaces, and
+    the validator refuses any line that names it)."""
+    pids = {int(model["routing"]["process_id"])}
+    names = set(if_map.values())
+    if discovery:
+        pids |= {int(p) for p in discovery.get("ospf_processes") or []}
+        names |= set(data_interfaces(discovery))
+    return {"ospf_processes": sorted(pids), "interfaces": sorted(names, key=natural_key)}
+
+
+def render_router(model: dict, rid: str, if_map: dict, plan_id: str, p2p_transit: bool,
+                  discovery: dict | None = None) -> dict:
     r = model["routers"][rid]
     routing = model["routing"]
     area = int(routing["area"])
@@ -121,6 +138,7 @@ def render_router(model: dict, rid: str, if_map: dict, plan_id: str, p2p_transit
             passive.append(name)
     ctx = {"plan_id": plan_id, "device_id": r["inventory_id"], "hostname": re.sub(r"[^A-Za-z0-9-]", "", rid) or "Router",
            "interfaces": interfaces,
+           "cleanup": cleanup_plan(model, rid, if_map, discovery),
            "ospf": {"process_id": int(routing["process_id"]), "router_id": r["router_id"],
                     "area": area, "networks": networks, "passive": passive}}
     text = _env.get_template("cisco_ios_ospf.j2").render(**ctx)
@@ -130,7 +148,7 @@ def render_router(model: dict, rid: str, if_map: dict, plan_id: str, p2p_transit
     return {"device_id": r["inventory_id"], "router": rid, "hostname": ctx["hostname"],
             "text": text, "lines": lines,
             "sha256": hashlib.sha256(deploy_text.encode()).hexdigest(),
-            "interfaces": interfaces, "ospf": ctx["ospf"],
+            "interfaces": interfaces, "ospf": ctx["ospf"], "cleanup": ctx["cleanup"],
             "expected": expected_state(model, rid, if_map)}
 
 
@@ -156,7 +174,8 @@ def expected_state(model: dict, rid: str, if_map: dict) -> dict:
             "ping_checks": ping}
 
 
-def generate_configs(model: dict, interface_map: dict, plan_id: str, p2p_transit: bool) -> dict:
+def generate_configs(model: dict, interface_map: dict, plan_id: str, p2p_transit: bool,
+                     discoveries: dict | None = None) -> dict:
     out = {}
     for rid, r in model["routers"].items():
         if not r.get("inventory_id") or not r.get("router_id"):
@@ -164,5 +183,6 @@ def generate_configs(model: dict, interface_map: dict, plan_id: str, p2p_transit
         if_map = interface_map.get(rid) or {}
         if any(i["network"] not in if_map for i in r["interfaces"]):
             continue
-        out[r["inventory_id"]] = render_router(model, rid, if_map, plan_id, p2p_transit)
+        out[r["inventory_id"]] = render_router(model, rid, if_map, plan_id, p2p_transit,
+                                               (discoveries or {}).get(r["inventory_id"]))
     return out

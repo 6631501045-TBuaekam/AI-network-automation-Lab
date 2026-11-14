@@ -40,7 +40,11 @@
         </label>
         <label class="lbl" for="requirements">Written requirements (optional - e.g. routing table from the hand-out)</label>
         <textarea id="requirements" rows="4" placeholder="Paste any requirement text that is not in the image. Leave empty to rely on the image only."></textarea>
-        <button id="btnUpload" class="btn" disabled>Upload diagram</button>
+        <div class="actions">
+          <button id="btnUpload" class="btn" disabled>Upload diagram</button>
+          <button id="btnRun" class="btn primary" disabled title="Upload, Generate, interface discovery and Review in one go - stops before approval">Run (new plan) &#9654;</button>
+        </div>
+        <div class="muted">Run starts a new plan and stops at Review. Its configuration first removes the previous OSPF and resets the data-plane interfaces (management untouched) - nothing reaches the routers until you Approve and Deploy.</div>
       </div>
       <div class="preview" id="preview"><span class="muted">Preview appears here</span></div>
     </div>

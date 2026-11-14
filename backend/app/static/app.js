@@ -45,7 +45,33 @@ function pickFile(f) {
   state.file = f;
   $("#preview").innerHTML = `<img alt="diagram preview" src="${URL.createObjectURL(f)}">`;
   $("#btnUpload").disabled = false;
+  $("#btnRun").disabled = false;
 }
+
+/* ---------------- run: upload -> generate -> discovery -> review, then STOP for approval */
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+$("#btnRun").onclick = () => busy($("#btnRun"), async () => {
+  if (!state.file) throw new Error("Choose a diagram first");
+  const fd = new FormData(); fd.append("file", state.file); fd.append("requirements", $("#requirements").value);
+  setPlan(await api("POST", "/api/diagrams", fd));
+  toast("Run: diagram uploaded - AI is analysing it");
+  $("#aiInfo").textContent = "AI is analysing the diagram…";
+  setPlan(await api("POST", `/api/plans/${state.planId}/generate`));
+  const blocking = (state.plan.topology.ambiguities || []).filter((a) => a.severity === "blocking");
+  if (blocking.length) {
+    $("#sec-generate").scrollIntoView({ behavior: "smooth" });
+    throw new Error("Run stopped: the AI flagged blocking ambiguities - fix them with Edit JSON, then click Review");
+  }
+  toast("Run: waiting for interface discovery (Kafka → worker)");
+  for (let t = 0; t < 90; t++) {   // up to ~3 min
+    state.discovery = await api("GET", "/api/discovery");
+    if (state.discovery.length && state.discovery.every((d) => d.last_job && !["PENDING", "RUNNING"].includes(d.last_job.status))) break;
+    await sleep(2000);
+  }
+  setPlan(await api("POST", `/api/plans/${state.planId}/review`));
+  $("#sec-review").scrollIntoView({ behavior: "smooth" });
+  toast("Run finished: check the mapping and configs, confirm the mapping, then Approve and Deploy");
+});
 $("#btnUpload").onclick = () => busy($("#btnUpload"), async () => {
   const fd = new FormData(); fd.append("file", state.file); fd.append("requirements", $("#requirements").value);
   const p = await api("POST", "/api/diagrams", fd);

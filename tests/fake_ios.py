@@ -26,6 +26,7 @@ class FakeRouter:
         self.ospf = None  # {"pid","rid","networks":[(net,area)],"passive":set()}
         self.configured_at = None
         self.saved = False
+        self.defaulted: list = []  # interfaces reset with `default interface` (clean-up)
 
     # ---------- derived state
     def _net(self, itf):
@@ -322,6 +323,18 @@ class CliSession:
             self.mode, self.ctx = ("config", None) if self.mode in ("if", "router") else ("exec", None)
             return ""
         w = s.split()
+        if self.mode == "config" and w[:3] == ["no", "router", "ospf"] and len(w) == 4:
+            if r.ospf and r.ospf["pid"] == int(w[3]):
+                r.ospf = None
+            return ""  # real IOS is silent even when the process does not exist
+        if self.mode == "config" and w[:2] == ["default", "interface"] and len(w) == 3:
+            if w[2] not in r.interfaces:
+                return INVALID
+            r.interfaces[w[2]].update(ip=None, mask=None, shutdown=True, p2p=False)
+            if r.ospf:
+                r.ospf["passive"].discard(w[2])
+            r.defaulted.append(w[2])
+            return f"Building configuration...\n\nInterface {w[2]} set to default configuration"
         if w[0] == "hostname" and len(w) == 2:
             r.hostname = w[1]
             return ""

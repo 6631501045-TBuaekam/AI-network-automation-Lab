@@ -28,7 +28,7 @@ automatically.
 | `inventory/` | Router management addresses (no credentials) |
 | `gns3/` | Router management baselines, practice reset script, VPCS commands |
 | `docs/` | GNS3 + Ubuntu build guide, architecture & test report |
-| `tests/` | 43 automated tests incl. an SSH-based simulated IOS lab |
+| `tests/` | 48 automated tests incl. an SSH-based simulated IOS lab |
 | `samples/` | The exam diagram as PNG (with and without the requirements table) |
 | `evidence/` | Screenshots and console output of the live GNS3 run (see `docs/REPORT.md` §5.2) |
 
@@ -155,8 +155,8 @@ AI, Kafka, worker, Paramiko - is real. **Not for the exam demo**; switch back wi
 |---|---|---|
 | 1 | Instructor resets R1/R2 data plane (management SSH kept) | - |
 | 2 | `docker compose up -d`, open UI, paste admin token (top right) | Health pill green |
-| 2 | Upload the instructor's diagram | Preview shown, plan `UPLOADED` |
-| 3 | **Generate** | AI JSON + ambiguities; discovery jobs appear in the jobs table (Kafka offsets) |
+| 2 | Upload the instructor's diagram (+ hand-out text), then **Run** - or Upload and **Generate** step by step | Run does upload → Generate → discovery → Review and stops before approval |
+| 3 | **Generate** (inside Run) | AI JSON + ambiguities; discovery jobs appear in the jobs table (Kafka offsets) |
 | 3 | Fix blocking ambiguities if any: **Edit JSON** → Save, or add the missing requirement text and Generate again | |
 | 3 | **Review** → check mapping (dropdowns = real interfaces) → **Confirm mapping** | All validation cards PASS, configs shown per router |
 | 3 | Enter approver name, tick confirmation, **Approve** | `APPROVED` + approval hash |
@@ -186,8 +186,14 @@ there, listed in `docs/REPORT.md` §5.2):
 * Recovery: the running config was not saved after a failure, so `reload` restores the
   last saved config; or copy the backup out
   (`docker compose cp worker:/data/backups/. ./backups/`) and re-apply; or fix the plan,
-  re-approve and redeploy (config is idempotent). To undo a successful deployment use
-  `gns3/reset-dataplane.txt` (practice only).
+  re-approve and redeploy (config is idempotent).
+* **Every new plan cleans up the previous one.** Each router's config starts with
+  `no router ospf <N>` (the plan's process and any found by discovery) and
+  `default interface <X>` for every discovered data-plane interface - never the management
+  interface (the validator refuses it). These lines are part of what the admin reviews and
+  approves, so a new diagram or addressing plan can be deployed over an old one with **Run**
+  → Approve → Deploy, without a manual reset. `gns3/reset-dataplane.txt` is only needed to
+  simulate the instructor's reset.
 * Jobs stuck RUNNING (worker crash) are re-claimable after `JOB_LEASE_SECONDS` (600 s).
 
 ## 6. Troubleshooting
@@ -208,7 +214,7 @@ there, listed in `docs/REPORT.md` §5.2):
 ## 7. Tests
 ```bash
 pip install -r backend/requirements.txt -r worker/requirements.txt pytest
-python -m pytest -q tests/     # 43 passed
+python -m pytest -q tests/     # 48 passed
 ```
 `tests/test_end_to_end.py` runs the complete workflow over real SSH against simulated IOS
 routers: discovery, review, approval, deploy, verification (FULL + routes + ping),

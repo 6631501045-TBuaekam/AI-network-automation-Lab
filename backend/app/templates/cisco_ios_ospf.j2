@@ -3,6 +3,14 @@
 ! Plan {{ plan_id }} | device {{ device_id }} | REVIEW BEFORE APPROVAL
 ! Management interface and SSH/VTY settings are intentionally untouched.
 ! ------------------------------------------------------------------
+! 1) Clean-up: remove any previous OSPF and reset the data-plane interfaces
+{% for p in cleanup.ospf_processes %}
+no router ospf {{ p }}
+{% endfor %}
+{% for n in cleanup.interfaces %}
+default interface {{ n }}
+{% endfor %}
+! 2) New configuration
 hostname {{ hostname }}
 !
 {% for i in interfaces %}

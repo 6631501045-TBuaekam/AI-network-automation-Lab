@@ -326,7 +326,7 @@ def review(plan_id: str):
     if not imap or not complete:
         imap, notes = suggest_mapping(model, discoveries, inv, lab["ports"] if lab else None)
         confirmed = False
-    configs = generate_configs(model, imap, plan_id, settings.ospf_transit_p2p)
+    configs = generate_configs(model, imap, plan_id, settings.ospf_transit_p2p, discoveries)
     result = validate(model, issues, imap, confirmed, configs, discoveries, inv,
                       settings.discovery_max_age_min, lab)
     result["mapping_notes"] = notes

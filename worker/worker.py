@@ -22,7 +22,7 @@ import httpx
 import yaml
 
 from parsers import (evaluate_verification, parse_cdp_neighbors, parse_ip_int_brief,
-                     parse_ip_interface_address, parse_ping)
+                     parse_ip_interface_address, parse_ospf_processes, parse_ping)
 from ssh_client import DeviceError, IOSSession
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s worker: %(message)s")
@@ -51,7 +51,8 @@ VERIFY_TIMEOUT = float(env("VERIFY_TIMEOUT", "180"))
 VERIFY_INTERVAL = float(env("VERIFY_INTERVAL", "10"))
 SCHEMA = "network-config-job/v1"
 
-READ_ONLY_DISCOVERY = ["show ip interface brief", "show cdp neighbors", "show version | include IOS|uptime"]
+READ_ONLY_DISCOVERY = ["show ip interface brief", "show cdp neighbors", "show version | include IOS|uptime",
+                       "show ip protocols"]
 VERIFY_COMMANDS = ["show ip ospf neighbor", "show ip route ospf", "show ip protocols"]
 
 
@@ -159,6 +160,8 @@ def do_discover(job, auth, be, inv):
             mgmt_net = parse_ip_interface_address(txt)
     result = {"interfaces": interfaces, "mgmt_interface": mgmt, "mgmt_network": mgmt_net,
               "cdp": parse_cdp_neighbors(res["show cdp neighbors"]),
+              # OSPF processes already running: the next plan's config removes them first
+              "ospf_processes": parse_ospf_processes(res["show ip protocols"]),
               "version": res["show version | include IOS|uptime"][:500]}
     if not mgmt:
         return "FAILED", "\n\n".join(out), result, "could not identify the management interface"

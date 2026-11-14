@@ -11,6 +11,8 @@ IFN = r"(?:GigabitEthernet|FastEthernet|Ethernet|TenGigabitEthernet)\d+(?:/\d+){
 ALLOWED = [re.compile(p) for p in (
     r"^hostname [A-Za-z0-9][A-Za-z0-9-]{0,62}$",
     rf"^interface {IFN}$",
+    r"^no router ospf \d{1,5}$",          # clean-up of a previous plan (OSPF only)
+    rf"^default interface {IFN}$",        # clean-up of a data-plane interface (never mgmt)
     r"^ description [A-Za-z0-9 _./:,-]{1,200}$",
     rf"^ ip address {IP} {IP}$",
     r"^ ip ospf network point-to-point$",

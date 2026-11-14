@@ -28,10 +28,12 @@ Workflow and trust boundaries:
    never taken from the diagram. The backend then queues **read-only discovery** jobs on
    Kafka; the worker runs fixed `show` commands to learn the real interface names and the
    management interface/subnet.
-3. **Review** - the backend builds a normalized model (any number of routers/LANs - nothing
+3. **Review** (the **Run** button performs steps 1-3 in one click and stops here) - the backend builds a normalized model (any number of routers/LANs - nothing
    hard-coded), suggests the interface mapping (inventory hint → GNS3 lab cable → CDP →
    ordered; a name is only used if SSH discovery found it), renders per-router IOS config,
-   and validates. The admin confirms the mapping.
+   and validates. Each config starts with a clean-up of the previous plan (`no router ospf
+   <N>`, `default interface <data port>`; never the management interface), so a new plan
+   replaces an old one completely. The admin confirms the mapping.
 4. **Approve** - admin token + approver name + explicit confirmation; validation is re-run
    at approval time; the approval stores a hash over all per-router config hashes.
 5. **Kafka** - one job per router: `{job_id, job_type, device_id, plan_id, deployment_id,
@@ -97,7 +99,8 @@ FastEthernet names were not typed anywhere: they come from SSH discovery on the 
 | AI providers (OpenAI-compatible base URL, local model without key, JSON mode, unreachable server, interface-name ambiguities dropped) | 8 | Pass |
 | GNS3 cross-check (GET only, switch look-through, management port excluded, cabling beats ordered guess, mismatch warning, API v2/v3 detection, basic auth, unreachable/closed project) | 12 | Pass |
 | SSH session handling (exactly one SSH session per `with open_session()`, retries kept) | 3 | Pass |
-| **Total** | **43** | **43 passed** |
+| Clean-up of the previous plan (clean-up lines first, other OSPF processes, management refused, second run with a new addressing plan leaves nothing stale, OSPF process parser) | 5 | Pass |
+| **Total** | **48** | **48 passed** |
 
 ### 5.2 Live GNS3 demonstration (2026-11-14, full Docker Compose stack)
 Routers were first reset to the instructor's starting state (`gns3/reset-dataplane.txt`:
@@ -133,6 +136,14 @@ Raw console text for 07-09 is in `evidence/*.txt`; the job list of the run is in
 * **Local model accuracy.** From the image alone Qwen2.5-VL 7B sometimes misreads one
   address; validation catches it. With the hand-out's requirement text pasted into the
   requirements box (as in the evidence run) every value was correct in every test.
+
+### 5.4 Run button and clean-up (live, 2026-11-14)
+Two runs back to back on the real lab through the web UI and the Docker stack: run 1 from
+reset routers, run 2 over run 1's configuration. Each: **Run** (to Review in 38 s / 24 s,
+only open item "confirm mapping") → confirm → Approve → Deploy → all four jobs SUCCESS →
+DEPLOYED. Run 2's R1 config started with `no router ospf 1`, `default interface
+FastEthernet0/0`, `default interface FastEthernet1/0` (evidence/10-run2-review-cleanup.png,
+evidence/11-run2-jobs.png); PC1 → 10.2.0.10 still 5/5 afterwards.
 
 ## 6. Conclusion
 The system satisfies the end-to-end chain Upload → AI → Review → Approval → Kafka →

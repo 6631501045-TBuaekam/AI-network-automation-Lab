@@ -160,3 +160,39 @@ def test_bad_credentials_reported(env, monkeypatch):
     drain(env, pos)
     j = h.get(f"/api/jobs/{jobs[0]['id']}").json()
     assert j["status"] == "FAILED" and j["error"].startswith("auth:")
+
+
+def test_second_run_replaces_previous_config(env):
+    """A new run over routers that already carry an earlier plan: the approved config first
+    removes the old OSPF and resets the data interfaces, so nothing stale is left over."""
+    h, r1 = env["http"], env["lab"].routers["R1"]
+    assert r1.ospf and "10.1.0.0/24" in {str(n) for n, _ in r1.ospf["networks"]}  # from run 1
+    pos = len(env["mem"].messages)
+    with open(os.path.join(ROOT, "samples", "exam-topology.png"), "rb") as fh:
+        plan = h.post("/api/diagrams", files={"file": ("topo.png", fh, "image/png")}).json()
+    pid = plan["id"]
+    plan = h.post(f"/api/plans/{pid}/generate").json()
+    # the instructor's new plan moves the R1-R2 link to 10.9.0.0/24
+    topo = json.loads(json.dumps(plan["topology"]).replace("10.1.0.", "10.9.0."))
+    h.put(f"/api/plans/{pid}/topology", headers=ADMIN, json={"topology": topo})
+    drain(env, pos)
+    plan = h.post(f"/api/plans/{pid}/review").json()
+    plan = h.put(f"/api/plans/{pid}/interface-map", headers=ADMIN,
+                 json={"interface_map": plan["interface_map"], "confirmed": True}).json()
+    assert plan["status"] == "REVIEWED", plan["validation"]["errors"]
+    lines = plan["configs"]["R1"]["lines"]
+    assert lines[:lines.index("hostname R1")] == [
+        "no router ospf 1", "default interface GigabitEthernet0/0",
+        "default interface GigabitEthernet0/1", "default interface GigabitEthernet0/2"]
+    # nothing reaches the routers before approval
+    assert h.post(f"/api/plans/{pid}/deploy", headers=ADMIN).status_code == 409
+    h.post(f"/api/plans/{pid}/approve", headers=ADMIN, json={"approver": "Lab Admin", "confirm": True})
+    pos = len(env["mem"].messages)
+    dep = h.post(f"/api/plans/{pid}/deploy", headers=ADMIN).json()
+    drain(env, pos)
+    dep = h.get(f"/api/deployments/{dep['id']}").json()
+    assert dep["status"] == "SUCCESS", [(j["job_type"], j["device_id"], j["error"]) for j in dep["jobs"]]
+    assert {str(n) for n, _ in r1.ospf["networks"]} == {"10.0.0.0/24", "10.9.0.0/24"}  # old link gone
+    assert r1.interfaces["GigabitEthernet0/1"]["ip"] == "10.9.0.1"
+    assert r1.interfaces["GigabitEthernet0/3"]["ip"] == "127.0.0.1"  # management untouched
+    assert "GigabitEthernet0/3" not in r1.defaulted

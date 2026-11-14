@@ -99,6 +99,11 @@ def parse_ospf_routes(text: str) -> list[dict]:
     return out
 
 
+def parse_ospf_processes(text: str) -> list[int]:
+    """All OSPF process ids in `show ip protocols` (a router may run more than one)."""
+    return sorted({int(p) for p in re.findall(r'Routing Protocol is "ospf (\d+)"', text)})
+
+
 def parse_ip_protocols(text: str) -> dict:
     res = {"process_id": None, "router_id": None, "networks": [], "passive_interfaces": []}
     m = re.search(r'Routing Protocol is "ospf (\d+)"', text)

@@ -112,3 +112,11 @@ def test_evaluate():
     assert ev["ok"], ev["checks"]
     ev = evaluate_verification(exp, "", ROUTES_SUBNETTED, PROTOCOLS)
     assert not ev["ok"]
+
+
+def test_ospf_processes_from_show_ip_protocols():
+    from parsers import parse_ospf_processes
+    txt = ('Routing Protocol is "ospf 1"\n  Router ID 1.1.1.1\n'
+           'Routing Protocol is "ospf 7"\n  Router ID 7.7.7.7\n')
+    assert parse_ospf_processes(txt) == [1, 7]
+    assert parse_ospf_processes("") == []

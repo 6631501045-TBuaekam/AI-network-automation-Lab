@@ -27,8 +27,38 @@ DISC = {"R1": disc("192.168.100.11"), "R2": disc("192.168.100.12")}
 def run(topo=TOPO, confirmed=True, mapping=None, discoveries=DISC):
     model, issues = build_model(topo, INV)
     imap = mapping or suggest_mapping(model, discoveries, INV)[0]
-    configs = generate_configs(model, imap, "plan-test", True)
+    configs = generate_configs(model, imap, "plan-test", True, discoveries)
     return model, imap, configs, validate(model, issues, imap, confirmed, configs, discoveries, INV, 60)
+
+
+def test_config_starts_with_cleanup_of_previous_plan():
+    model, imap, configs, v = run()
+    assert v["ok"], v["errors"]
+    r1 = configs["R1"]["lines"]
+    first = r1[:r1.index("hostname R1")]
+    assert first == ["no router ospf 1", "default interface GigabitEthernet0/0",
+                     "default interface GigabitEthernet0/1", "default interface GigabitEthernet0/2"]
+    assert not any("GigabitEthernet0/3" in ln for ln in r1)  # management never reset
+
+
+def test_cleanup_removes_other_discovered_ospf_processes():
+    d = copy.deepcopy(DISC)
+    d["R1"]["ospf_processes"] = [7, 1]
+    model, imap, configs, v = run(discoveries=d)
+    assert v["ok"], v["errors"]
+    r1 = configs["R1"]["lines"]
+    assert r1[:2] == ["no router ospf 1", "no router ospf 7"]
+    assert "no router ospf 7" not in configs["R2"]["lines"]
+
+
+def test_cleanup_of_management_interface_is_refused():
+    model, issues = build_model(TOPO, INV)
+    imap = suggest_mapping(model, DISC, INV)[0]
+    configs = generate_configs(model, imap, "p", True, DISC)
+    configs["R1"]["lines"].insert(0, "default interface GigabitEthernet0/3")
+    v = validate(model, issues, imap, True, configs, DISC, INV, 60)
+    assert not v["ok"]
+    assert any("management interface" in e["message"] for e in v["errors"])
 
 
 def test_exam_topology_is_valid():
