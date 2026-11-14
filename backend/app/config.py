@@ -44,7 +44,7 @@ class Settings:
         # GNS3 lab cross-check (read-only, optional). Suggests the interface mapping from the
         # real cabling; SSH discovery and the admin's confirmation still decide.
         self.gns3_enabled = _bool("GNS3_ENABLED", False)
-        self.gns3_url = _env("GNS3_URL", "http://192.168.192.131")
+        self.gns3_url = _env("GNS3_URL")  # your GNS3 server, e.g. http://<gns3-vm-ip> - no default
         self.gns3_project = _env("GNS3_PROJECT", "ai-netauto-ospf")
         self.gns3_token = _env("GNS3_TOKEN")
         self.gns3_username = _env("GNS3_USERNAME")

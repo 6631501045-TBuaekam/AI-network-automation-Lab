@@ -1,17 +1,17 @@
-# Device inventory: management (out-of-band) SSH addresses provided by the instructor.
-# Copy to inventory/devices.yaml and edit. No credentials here - they live in .env (worker only).
+# Router management addresses (the instructor gives these). No passwords here - they are in .env.
+# Copy to inventory/devices.yaml and replace each <...> with the real value.
 #
-# The device id (R1, R2) must match the router names in the diagram ("router1" -> R1 also works).
+# The names R1, R2 must match the router names in the diagram ("router1" -> R1 also works).
 devices:
   R1:
-    host: 192.168.192.11      # R1 management IP (FastEthernet1/1)
+    host: "<R1_MGMT_IP>"      # R1 management IP, e.g. 192.168.x.11
     port: 22
-    # Optional - only if auto-detection fails (management IP is NATed / different):
+    # Optional - only if the management interface cannot be found automatically:
     # mgmt_interface: FastEthernet1/1
-    # Optional cabling hints; otherwise the UI suggests and YOU confirm the mapping:
+    # Optional cabling hints (otherwise the page suggests a mapping and you confirm it):
     # interface_hints:
     #   10.0.0.0/24: FastEthernet0/0
     #   10.1.0.0/24: FastEthernet1/0
   R2:
-    host: 192.168.192.12
+    host: "<R2_MGMT_IP>"      # R2 management IP, e.g. 192.168.x.12
     port: 22

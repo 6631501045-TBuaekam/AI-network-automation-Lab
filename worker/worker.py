@@ -122,6 +122,9 @@ def open_session(device_id: str, inv: dict) -> IOSSession:
     d = inv.get(device_id)
     if not d or not d.get("host"):
         raise DeviceError(f"{device_id} is not in the worker inventory")
+    if str(d["host"]).startswith("<"):
+        raise DeviceError(f"{device_id}: management IP not filled in - replace {d['host']} "
+                          f"in inventory/devices.yaml")
     last = None
     for attempt in range(SSH_RETRIES + 1):
         try:

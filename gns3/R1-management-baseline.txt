@@ -1,7 +1,10 @@
 ! R1 - management access only (Cisco 7200 in GNS3). This is the instructor's part.
 ! Paste once into the R1 console when you build the lab.
 ! It does NOT set up Fa0/0, Fa1/0 or OSPF - the system does that.
-! First replace <ROUTER_PASSWORD> with ROUTER_SSH_PASSWORD from .env.
+! First replace:
+!   <ROUTER_PASSWORD>  with ROUTER_SSH_PASSWORD from .env
+!   <R1_MGMT_IP>      with R1's management IP (e.g. 192.168.x.11)
+!   <MGMT_MASK>        with the management netmask (e.g. 255.255.255.0)
 enable
 configure terminal
 hostname R1
@@ -14,7 +17,7 @@ ip ssh time-out 60
 ip ssh authentication-retries 3
 interface FastEthernet1/1
  description OOB-MGMT - do not modify
- ip address 192.168.192.11 255.255.255.0
+ ip address <R1_MGMT_IP> <MGMT_MASK>
  no shutdown
  exit
 line vty 0 4

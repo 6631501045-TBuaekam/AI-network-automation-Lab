@@ -218,3 +218,17 @@ def test_not_a_gns3_server():
     transport = httpx.MockTransport(lambda req: httpx.Response(404))
     with pytest.raises(gns3.GNS3Error, match="not a GNS3 server"):
         gns3.fetch_lab(gns3.GNS3Client("http://nope.test", transport=transport), "x")
+
+
+def test_enabled_without_url_is_a_clear_warning(monkeypatch):
+    model, _ = build_model(TOPO, INV)
+    monkeypatch.setenv("GNS3_ENABLED", "true")
+    monkeypatch.delenv("GNS3_URL", raising=False)
+    reload_settings()
+    try:
+        res = gns3.lab_check(model)
+        assert res["ports"] == {} and res["issues"][0]["severity"] == "warning"
+        assert "GNS3_URL is not set" in res["issues"][0]["message"]
+    finally:
+        monkeypatch.delenv("GNS3_ENABLED")
+        reload_settings()

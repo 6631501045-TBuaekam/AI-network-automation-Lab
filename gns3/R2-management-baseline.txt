@@ -1,5 +1,8 @@
 ! R2 - management access only (Cisco 7200 in GNS3). This is the instructor's part.
-! Paste once into the R2 console. First replace <ROUTER_PASSWORD> with ROUTER_SSH_PASSWORD from .env.
+! Paste once into the R2 console. First replace:
+!   <ROUTER_PASSWORD>  with ROUTER_SSH_PASSWORD from .env
+!   <R2_MGMT_IP>      with R2's management IP (e.g. 192.168.x.12)
+!   <MGMT_MASK>        with the management netmask (e.g. 255.255.255.0)
 enable
 configure terminal
 hostname R2
@@ -12,7 +15,7 @@ ip ssh time-out 60
 ip ssh authentication-retries 3
 interface FastEthernet1/1
  description OOB-MGMT - do not modify
- ip address 192.168.192.12 255.255.255.0
+ ip address <R2_MGMT_IP> <MGMT_MASK>
  no shutdown
  exit
 line vty 0 4

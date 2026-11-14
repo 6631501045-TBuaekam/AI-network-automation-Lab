@@ -260,6 +260,8 @@ def lab_check(model: dict) -> dict | None:
     if not settings.gns3_enabled:
         return None
     try:
+        if not settings.gns3_url:
+            raise GNS3Error("GNS3_URL is not set in .env (e.g. http://<gns3-vm-ip>)")
         client = GNS3Client(settings.gns3_url, settings.gns3_token, settings.gns3_username,
                             settings.gns3_password, settings.gns3_timeout,
                             api=settings.gns3_api)

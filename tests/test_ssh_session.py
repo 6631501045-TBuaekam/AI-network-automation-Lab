@@ -51,3 +51,12 @@ def test_plain_with_still_connects(monkeypatch):
     with IOSSession("192.0.2.1", 22, "u", "p"):
         pass
     assert calls == {"connect": 1, "close": 1}
+
+
+def test_unfilled_inventory_placeholder_is_reported(monkeypatch):
+    import pytest
+    from ssh_client import DeviceError
+    calls = _patch(monkeypatch)
+    with pytest.raises(DeviceError, match="management IP not filled in"):
+        worker.open_session("R1", {"R1": {"host": "<R1_MGMT_IP>", "port": 22}})
+    assert calls["connect"] == 0  # never tries to connect to a placeholder

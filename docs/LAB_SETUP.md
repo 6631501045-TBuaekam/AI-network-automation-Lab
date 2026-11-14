@@ -4,11 +4,11 @@ This builds the exam network in GNS3 and gives the routers a **management networ
 The system uses the management network to reach the routers over SSH. It never changes it.
 
 ```
-              Management network 192.168.192.0/24 (VMware VMnet1, host-only)
+              Management network <MGMT_NET>, e.g. 192.168.x.0/24 (VMware VMnet1, host-only)
                          |
    MGMT-CLOUD ---- MGMT-SW (Ethernet switch)
                     |                 |
-               R1 Fa1/1 .11      R2 Fa1/1 .12
+        R1 Fa1/1 <R1_MGMT_IP>   R2 Fa1/1 <R2_MGMT_IP>
                     |                 |
    PC1 ---- Fa0/0 [R1] Fa1/0 ------- Fa1/0 [R2] Fa0/0 ---- PC2
  10.0.0.10   10.0.0.1     10.1.0.1  10.1.0.2    10.2.0.2      10.2.0.10
@@ -50,25 +50,26 @@ Other cabling is fine too. The system does not assume interface names - you conf
 mapping on the Review page.
 
 ## 3. Management access (done once - the instructor's part in the exam)
+First pick two free IPs in your management network, for example `192.168.x.11` and
+`192.168.x.12` (where `192.168.x.0/24` is your VMnet1 network). Use the same IPs in
+`inventory/devices.yaml`.
+
 1. Start all nodes. Wait for the router prompt (first boot takes 1-2 minutes).
-2. Open the R1 console and paste `gns3/R1-management-baseline.txt`
-   (first replace `<ROUTER_PASSWORD>` with your `ROUTER_SSH_PASSWORD`).
+2. Open the R1 console and paste `gns3/R1-management-baseline.txt`. First replace the
+   `<...>` values in it: the password (`ROUTER_SSH_PASSWORD`), R1's management IP and the
+   netmask.
 3. Do the same on R2 with `gns3/R2-management-baseline.txt`.
 4. Check with `show ip interface brief`: only Fa1/1 has an IP address.
 5. On PC1 and PC2 run the commands in `gns3/vpcs-commands.txt` (PCs may be configured by hand).
-
-Check from your PC that SSH answers: `ping 192.168.192.11` and `ping 192.168.192.12`.
-
-If your VMnet1 network is different, change the IPs in the two baseline files and in
-`inventory/devices.yaml`.
+6. Check from your PC that both router IPs answer `ping`.
 
 ## 4. Where Docker runs
-Docker must reach 192.168.192.11 and .12.
+Docker must reach both router management IPs.
 
 * **On the GNS3 PC (Docker Desktop)** - nothing extra. This is how we tested it.
 * **On an Ubuntu VM** - give the VM a second network card on **VMnet1 (host-only)** with a
-  fixed IP such as 192.168.192.10/24, install Docker Engine with the Compose plugin, and
-  copy the project to the VM.
+  fixed IP in the management network (e.g. 192.168.x.10/24), install Docker Engine with the
+  Compose plugin, and copy the project to the VM.
 
 Then continue with the README: settings, start, demo.
 

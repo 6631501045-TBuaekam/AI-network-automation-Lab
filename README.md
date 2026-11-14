@@ -29,7 +29,7 @@ sends the job through **Kafka** to a **Python worker**, which logs in to the rou
 | `docs/REPORT.md` | Short report: design and test results |
 | `evidence/` | Screenshots from the live test |
 | `samples/` | The exam diagram |
-| `tests/` | 48 automated tests |
+| `tests/` | 50 automated tests |
 
 ## 1. Build the lab
 Follow [docs/LAB_SETUP.md](docs/LAB_SETUP.md): GNS3 routers, PCs, and the management
@@ -46,7 +46,8 @@ In `.env` set at least:
 * `ROUTER_SSH_PASSWORD` - the routers' `netadmin` password.
 * The AI model - see "Choose the AI model" below.
 
-In `inventory/devices.yaml` check the router management IPs (default 192.168.192.11 and .12).
+In `inventory/devices.yaml` replace `<R1_MGMT_IP>` and `<R2_MGMT_IP>` with your routers'
+management IPs.
 
 Never share or submit `.env` - it holds your secrets. Git already ignores it.
 
@@ -101,7 +102,8 @@ Ollama on Linux: allow outside connections, or the Docker container cannot reach
 → `sudo systemctl restart ollama`.
 
 ## 6. Optional: GNS3 cable check
-Turn on with `GNS3_ENABLED=true` (plus `GNS3_URL`, `GNS3_PROJECT`, `GNS3_TOKEN` in `.env`).
+Turn on with `GNS3_ENABLED=true` and set `GNS3_URL` (your GNS3 server, e.g.
+`http://<gns3-vm-ip>`), `GNS3_PROJECT` and `GNS3_TOKEN` in `.env`.
 
 It reads the GNS3 project (devices and cables) and:
 * warns if the AI's topology does not match the lab;
@@ -137,7 +139,7 @@ lock-out).
 ## 8. Tests
 ```bash
 pip install -r backend/requirements.txt -r worker/requirements.txt pytest
-python -m pytest -q tests/     # 48 passed
+python -m pytest -q tests/     # 50 passed
 ```
 The tests include a full run against simulated routers over real SSH.
 
