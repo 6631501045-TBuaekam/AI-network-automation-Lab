@@ -28,7 +28,7 @@ automatically.
 | `inventory/` | Router management addresses (no credentials) |
 | `gns3/` | Router management baselines, practice reset script, VPCS commands |
 | `docs/` | GNS3 + Ubuntu build guide, architecture & test report |
-| `tests/` | 37 automated tests incl. an SSH-based simulated IOS lab |
+| `tests/` | 40 automated tests incl. an SSH-based simulated IOS lab |
 | `samples/` | The exam diagram as PNG (with and without the requirements table) |
 
 ---
@@ -117,8 +117,10 @@ reads the open GNS3 project (nodes and cables) and:
   found that interface on the router;
 * warns if the confirmed mapping disagrees with the cabling.
 
-It only sends GET requests to the GNS3 API (plus a login call if you use a username), never
-changes the lab and never talks to the routers. Everything it reports is a **warning**: SSH
+It uses GNS3's own REST API, not MCP, so it works on **GNS3 3.x (API v3) and GNS3 2.2
+(API v2)**; the version is detected automatically (`GNS3_API=auto`, or force `v2` / `v3`).
+Tested against GNS3 3.1.0 and 2.2.54. It only sends GET requests to the GNS3 API (plus the
+v3 login call if you use a username), never changes the lab and never talks to the routers. Everything it reports is a **warning**: SSH
 discovery still supplies the real interface names, and the administrator still confirms the
 mapping, approves and deploys exactly as before. Management ports are recognised because
 their switch leads out of the lab to a Cloud/NAT node.
@@ -129,6 +131,10 @@ GNS3_URL=http://192.168.192.131
 GNS3_PROJECT=ai-netauto-ospf        # must be open in GNS3
 GNS3_TOKEN=<GNS3 API token>         # or GNS3_USERNAME / GNS3_PASSWORD (read-only user)
 ```
+GNS3 2.2: set `GNS3_URL` to the 2.2 server (its local server is usually
+`http://localhost:3080`; from Docker use `http://host.docker.internal:3080`), leave
+`GNS3_TOKEN` empty, and set `GNS3_USERNAME` / `GNS3_PASSWORD` only if that server has
+authentication turned on.
 If GNS3 is unreachable or the project is closed, Review shows one warning and carries on.
 
 ### Optional rehearsal without GNS3
@@ -196,7 +202,7 @@ Evidence screenshots for submission (save in `evidence/`):
 ## 7. Tests
 ```bash
 pip install -r backend/requirements.txt -r worker/requirements.txt pytest
-python -m pytest -q tests/     # 37 passed
+python -m pytest -q tests/     # 40 passed
 ```
 `tests/test_end_to_end.py` runs the complete workflow over real SSH against simulated IOS
 routers: discovery, review, approval, deploy, verification (FULL + routes + ping),

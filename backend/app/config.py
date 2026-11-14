@@ -50,6 +50,8 @@ class Settings:
         self.gns3_username = _env("GNS3_USERNAME")
         self.gns3_password = _env("GNS3_PASSWORD")
         self.gns3_timeout = float(_env("GNS3_TIMEOUT", "5"))
+        # auto = detect (v3 for GNS3 3.x, v2 for GNS3 2.2); or force "v2" / "v3"
+        self.gns3_api = (_env("GNS3_API", "auto") or "auto").lower()
 
         # Auth
         self.admin_token = _env("ADMIN_TOKEN")

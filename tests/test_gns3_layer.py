@@ -36,7 +36,8 @@ def _link(a, ap, b, bp):
                       {"node_id": b, "adapter_number": bp[0], "port_number": bp[1]}]}
 
 
-def lab_api(swap_r1=False, extra_cable=False, drop_r2_pc2=False, project_status="opened"):
+def lab_api(swap_r1=False, extra_cable=False, drop_r2_pc2=False, project_status="opened",
+            api="v3", require_basic=None):
     """Fake GNS3 v3 API for the exam lab. swap_r1 puts PC1 on Fa1/0 and R2 on Fa0/0."""
     nodes = [_router("r1", "R1"), _router("r2", "R2"), _simple("pc1", "PC1", "vpcs"),
              _simple("pc2", "PC2", "vpcs"), _simple("sw", "MGMT-SW", "ethernet_switch", 8),
@@ -56,11 +57,18 @@ def lab_api(swap_r1=False, extra_cable=False, drop_r2_pc2=False, project_status=
         seen.append((req.method, req.url.path))
         if req.method != "GET":
             return httpx.Response(405)
-        if req.url.path == "/v3/projects":
+        if not req.url.path.startswith(f"/{api}/"):
+            return httpx.Response(404)  # the other API version does not exist on this server
+        if require_basic and req.headers.get("authorization") != require_basic:
+            return httpx.Response(401)
+        path = req.url.path[len(api) + 1:]
+        if path == "/version":
+            return httpx.Response(200, json={"version": "3.1.0" if api == "v3" else "2.2.54", "local": False})
+        if path == "/projects":
             return httpx.Response(200, json=[{"name": "ai-netauto-ospf", "project_id": PID, "status": project_status}])
-        if req.url.path == f"/v3/projects/{PID}/nodes":
+        if path == f"/projects/{PID}/nodes":
             return httpx.Response(200, json=nodes)
-        if req.url.path == f"/v3/projects/{PID}/links":
+        if path == f"/projects/{PID}/links":
             return httpx.Response(200, json=links)
         return httpx.Response(404)
     return httpx.MockTransport(handler), seen
@@ -174,3 +182,39 @@ def test_closed_project_is_reported():
     client = gns3.GNS3Client("http://gns3.test", token="t", transport=transport)
     with pytest.raises(gns3.GNS3Error, match="closed"):
         gns3.fetch_lab(client, "ai-netauto-ospf")
+
+
+def test_v2_server_is_detected_and_read():
+    transport, seen = lab_api(api="v2")
+    client = gns3.GNS3Client("http://gns3.test", token="ignored-on-v2", transport=transport)
+    lab = gns3.fetch_lab(client, "ai-netauto-ospf")
+    assert lab["api"] == "v2" and lab["server_version"] == "2.2.54"
+    assert {m for m, _ in seen} == {"GET"}
+    assert ("GET", "/v3/version") in seen and ("GET", "/v2/projects") in seen
+    assert not any(p.startswith("/v3/projects") for _, p in seen)
+    model, _ = build_model(TOPO, INV)
+    res = gns3.cross_check(model, lab)
+    assert res["issues"] == []
+    assert res["ports"]["R1"] == {"10.0.0.0/24": "FastEthernet0/0", "10.1.0.0/24": "FastEthernet1/0"}
+    assert res["summary"]["api"] == "v2"
+
+
+def test_v2_basic_auth_and_forced_api():
+    import base64
+    want = "Basic " + base64.b64encode(b"admin:pw").decode()
+    transport, seen = lab_api(api="v2", require_basic=want)
+    lab = gns3.fetch_lab(gns3.GNS3Client("http://gns3.test", username="admin", password="pw",
+                                         transport=transport, api="v2"), "ai-netauto-ospf")
+    assert lab["api"] == "v2"
+    assert not any(p.startswith("/v3") for _, p in seen)  # forced v2: no detection call
+    assert {m for m, _ in seen} == {"GET"}  # no v3 login POST on a v2 server
+    transport, _ = lab_api(api="v2", require_basic=want)
+    with pytest.raises(gns3.GNS3Error, match="refused the credentials"):
+        gns3.fetch_lab(gns3.GNS3Client("http://gns3.test", username="admin", password="wrong",
+                                       transport=transport, api="v2"), "ai-netauto-ospf")
+
+
+def test_not_a_gns3_server():
+    transport = httpx.MockTransport(lambda req: httpx.Response(404))
+    with pytest.raises(gns3.GNS3Error, match="not a GNS3 server"):
+        gns3.fetch_lab(gns3.GNS3Client("http://nope.test", transport=transport), "x")

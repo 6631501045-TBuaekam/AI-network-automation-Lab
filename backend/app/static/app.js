@@ -165,7 +165,7 @@ function renderReview(p) {
         <td><select data-router="${esc(rid)}" data-net="${esc(i.network)}">${all.map((o) => `<option ${o === cur ? "selected" : ""}>${esc(o)}</option>`).join("")}</select></td></tr>`;
     }
   }
-  const lab = v.gns3 ? `<div class="muted"><b>GNS3 project ${esc(v.gns3.summary?.project || "")}</b> (read-only - suggests ports from the real cables; you still confirm)</div>${(v.gns3.notes || []).map((n) => `<div class="muted">• ${esc(n)}</div>`).join("")}` : "";
+  const lab = v.gns3 ? `<div class="muted"><b>GNS3 project ${esc(v.gns3.summary?.project || "")}</b>${v.gns3.summary?.api ? ` · API ${esc(v.gns3.summary.api)}${v.gns3.summary.server_version ? ` (GNS3 ${esc(v.gns3.summary.server_version)})` : ""}` : ""} (read-only - suggests ports from the real cables; you still confirm)</div>${(v.gns3.notes || []).map((n) => `<div class="muted">• ${esc(n)}</div>`).join("")}` : "";
   h += `</tbody></table>${lab}${(v.mapping_notes || []).map((n) => `<div class="muted">• ${esc(n)}</div>`).join("")}
     <div class="actions"><span class="muted">Mapping: ${p.mapping_confirmed ? "<b>confirmed</b>" : "<b>NOT confirmed</b>"}</span>
     <button class="btn small" id="btnSaveMap">Save mapping</button><button class="btn small primary" id="btnConfirmMap">Confirm mapping &amp; re-validate (admin)</button></div>`;

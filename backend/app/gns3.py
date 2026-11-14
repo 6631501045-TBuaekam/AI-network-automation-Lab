@@ -37,16 +37,49 @@ def canonical_ifname(name: str) -> str:
 
 
 class GNS3Client:
-    """Minimal GNS3 v3 client. Only GET is ever sent to the lab API; the single POST is the
-    login call that turns a username/password into a token (it changes nothing in the lab)."""
+    """Minimal read-only GNS3 client for API v3 (GNS3 3.x) and v2 (GNS3 2.2).
+
+    The API version is detected from the server (`GET /v3/version`, then `/v2/version`)
+    unless given. Only GET is ever sent to the lab API; the one exception is the v3 login
+    call that turns a username/password into a token (it changes nothing in the lab).
+    v2 uses HTTP basic auth when a username is set, and no auth otherwise."""
 
     def __init__(self, url: str, token: str | None = None, username: str | None = None,
-                 password: str | None = None, timeout: float = 5.0, transport=None):
+                 password: str | None = None, timeout: float = 5.0, transport=None,
+                 api: str | None = None):
         self.url = url.rstrip("/")
         self.timeout = timeout
         self._client = httpx.Client(timeout=timeout, transport=transport)
         self._token = token
         self._username, self._password = username, password
+        self._api = api if api in ("v2", "v3") else None
+        self.server_version: str | None = None
+
+    def _send(self, path: str, headers: dict | None = None, auth=None) -> httpx.Response:
+        try:
+            return self._client.get(f"{self.url}{path}", headers=headers or {}, auth=auth)
+        except httpx.HTTPError as exc:
+            raise GNS3Error(f"GNS3 server {self.url} unreachable: {exc}") from exc
+
+    def _basic(self):
+        return (self._username, self._password or "") if self._username else None
+
+    @property
+    def api(self) -> str:
+        """'v3' or 'v2', detected once from the version endpoints."""
+        if self._api is None:
+            for ver in ("v3", "v2"):
+                r = self._send(f"/{ver}/version", auth=self._basic() if ver == "v2" else None)
+                if r.status_code < 400:
+                    self._api = ver
+                    try:
+                        self.server_version = (r.json() or {}).get("version")
+                    except ValueError:
+                        pass
+                    break
+            else:
+                raise GNS3Error(f"{self.url} is not a GNS3 server (no /v3/version or /v2/version)")
+        return self._api
 
     def _headers(self) -> dict:
         if not self._token and self._username:
@@ -58,26 +91,31 @@ class GNS3Client:
         return {"Authorization": f"Bearer {self._token}"} if self._token else {}
 
     def get(self, path: str):
-        try:
-            r = self._client.get(f"{self.url}{path}", headers=self._headers())
-        except httpx.HTTPError as exc:
-            raise GNS3Error(f"GNS3 server {self.url} unreachable: {exc}") from exc
+        """GET /{api}{path}; `path` starts with '/' and has no version prefix."""
+        api = self.api
+        if api == "v3":
+            r = self._send(f"/v3{path}", headers=self._headers())
+        else:
+            r = self._send(f"/v2{path}", auth=self._basic())
+        if r.status_code == 401:
+            raise GNS3Error(f"GNS3 {api} API refused the credentials (401) - check GNS3_TOKEN "
+                            f"or GNS3_USERNAME/GNS3_PASSWORD")
         if r.status_code >= 400:
-            raise GNS3Error(f"GNS3 GET {path} failed ({r.status_code}): {r.text[:200]}")
+            raise GNS3Error(f"GNS3 GET /{api}{path} failed ({r.status_code}): {r.text[:200]}")
         return r.json()
 
 
 def fetch_lab(client: GNS3Client, project: str) -> dict:
-    """Return {project, nodes: {name: {type, ports: {(adapter, port): port_name}}}, links: [...]}."""
-    projects = client.get("/v3/projects")
+    """Return {project, api, server_version, nodes: {name: {type, status, ports}}, links}."""
+    projects = client.get("/projects")
     proj = next((p for p in projects if project in (p.get("name"), p.get("project_id"))), None)
     if proj is None:
         raise GNS3Error(f"GNS3 project '{project}' not found")
     if proj.get("status") != "opened":
         raise GNS3Error(f"GNS3 project '{proj['name']}' is closed - open it in GNS3 first")
     pid = proj["project_id"]
-    nodes_raw = client.get(f"/v3/projects/{pid}/nodes")
-    links_raw = client.get(f"/v3/projects/{pid}/links")
+    nodes_raw = client.get(f"/projects/{pid}/nodes")
+    links_raw = client.get(f"/projects/{pid}/links")
     nodes, by_id = {}, {}
     for n in nodes_raw:
         ports = {(p["adapter_number"], p["port_number"]): p.get("name") or p.get("short_name")
@@ -96,7 +134,8 @@ def fetch_lab(client: GNS3Client, project: str) -> dict:
             ends.append((name, port))
         if len(ends) == 2:
             links.append(ends)
-    return {"project": proj["name"], "nodes": nodes, "links": links}
+    return {"project": proj["name"], "api": client.api, "server_version": client.server_version,
+            "nodes": nodes, "links": links}
 
 
 def port_neighbours(lab: dict) -> dict:
@@ -210,7 +249,9 @@ def cross_check(model: dict, lab: dict) -> dict:
     if stopped:
         warn(f"GNS3 nodes not started: {', '.join(sorted(stopped))}")
     return {"issues": issues, "ports": ports, "notes": notes,
-            "summary": {"project": lab["project"], "matched": sorted(k for k, v in names.items() if v)}}
+            "summary": {"project": lab["project"], "api": lab.get("api"),
+                        "server_version": lab.get("server_version"),
+                        "matched": sorted(k for k, v in names.items() if v)}}
 
 
 def lab_check(model: dict) -> dict | None:
@@ -220,7 +261,8 @@ def lab_check(model: dict) -> dict | None:
         return None
     try:
         client = GNS3Client(settings.gns3_url, settings.gns3_token, settings.gns3_username,
-                            settings.gns3_password, settings.gns3_timeout)
+                            settings.gns3_password, settings.gns3_timeout,
+                            api=settings.gns3_api)
         return cross_check(model, fetch_lab(client, settings.gns3_project))
     except GNS3Error as exc:
         return {"issues": [{"category": "gns3_lab", "severity": "warning",
