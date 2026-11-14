@@ -176,7 +176,8 @@ Evidence screenshots for submission (save in `evidence/`):
 * On an IOS error the push stops at the failing line, leaves config mode, does **not**
   `write memory`, and marks the job FAILED with the exact `%` message.
 * After a push the worker opens a **new** SSH session to prove management still works.
-* Auth failures are not retried (avoids lockout); timeouts/unreachable are retried twice.
+* Auth failures are not retried (avoids lockout); timeouts/unreachable are retried (`SSH_RETRIES`, default 5, ~30 s - emulated routers can
+  refuse SSH briefly right after a deploy).
 * Recovery: the running config was not saved after a failure, so `reload` restores the
   last saved config; or copy the backup out
   (`docker compose cp worker:/data/backups/. ./backups/`) and re-apply; or fix the plan,

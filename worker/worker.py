@@ -43,7 +43,9 @@ WORKER_ID = env("WORKER_ID", f"{socket.gethostname()}-{uuid.uuid4().hex[:6]}")
 INVENTORY_PATH = env("INVENTORY_PATH", "/config/devices.yaml")
 DATA_DIR = env("DATA_DIR", "/data")
 SSH_TIMEOUT = float(env("SSH_TIMEOUT", "15"))
-SSH_RETRIES = int(env("SSH_RETRIES", "2"))
+# 5 retries (2+4+...+10 s, ~30 s): an emulated router (dynamips/IOSv) can refuse SSH for
+# several seconds right after a deploy while it releases the previous VTY sessions.
+SSH_RETRIES = int(env("SSH_RETRIES", "5"))
 HOST_KEY_POLICY = env("SSH_HOST_KEY_POLICY", "accept-new")
 VERIFY_TIMEOUT = float(env("VERIFY_TIMEOUT", "180"))
 VERIFY_INTERVAL = float(env("VERIFY_INTERVAL", "10"))
