@@ -101,7 +101,7 @@ async function refresh() {
   render();
 }
 async function health() {
-  try { const h = await api("GET", "/api/health"); $("#health").textContent = `API ok · AI: ${h.ai_provider} · topic: ${h.kafka_topic}`; $("#health").className = "pill ok"; }
+  try { const h = await api("GET", "/api/health"); $("#health").textContent = `API ok · AI: ${h.ai_provider} · topic: ${h.kafka_topic}${h.gns3 ? ` · GNS3: ${h.gns3.project}` : ""}`; $("#health").className = "pill ok"; }
   catch { $("#health").textContent = "API unreachable"; $("#health").className = "pill bad"; }
 }
 $("#kafkaUiLink").href = `${location.protocol}//${location.hostname}:8080/`;
@@ -145,7 +145,8 @@ function render() {
 }
 
 const LABELS = { addressing: "Addressing", subnet: "Subnet consistency", interface_mapping: "Interface mapping",
-  ospf: "OSPF settings", management: "Management reachability", safety: "Safety / allow-list", ai_ambiguity: "AI ambiguities" };
+  ospf: "OSPF settings", management: "Management reachability", safety: "Safety / allow-list", ai_ambiguity: "AI ambiguities",
+  gns3_lab: "GNS3 lab cross-check (read-only)" };
 function renderReview(p) {
   const v = p?.validation;
   if (!v) { $("#mapping").innerHTML = ""; $("#validation").innerHTML = ""; $("#configs").innerHTML = ""; $("#reviewStatus").textContent = ""; return; }
@@ -164,7 +165,8 @@ function renderReview(p) {
         <td><select data-router="${esc(rid)}" data-net="${esc(i.network)}">${all.map((o) => `<option ${o === cur ? "selected" : ""}>${esc(o)}</option>`).join("")}</select></td></tr>`;
     }
   }
-  h += `</tbody></table>${(v.mapping_notes || []).map((n) => `<div class="muted">• ${esc(n)}</div>`).join("")}
+  const lab = v.gns3 ? `<div class="muted"><b>GNS3 project ${esc(v.gns3.summary?.project || "")}</b> (read-only - suggests ports from the real cables; you still confirm)</div>${(v.gns3.notes || []).map((n) => `<div class="muted">• ${esc(n)}</div>`).join("")}` : "";
+  h += `</tbody></table>${lab}${(v.mapping_notes || []).map((n) => `<div class="muted">• ${esc(n)}</div>`).join("")}
     <div class="actions"><span class="muted">Mapping: ${p.mapping_confirmed ? "<b>confirmed</b>" : "<b>NOT confirmed</b>"}</span>
     <button class="btn small" id="btnSaveMap">Save mapping</button><button class="btn small primary" id="btnConfirmMap">Confirm mapping &amp; re-validate (admin)</button></div>`;
   $("#mapping").innerHTML = h;

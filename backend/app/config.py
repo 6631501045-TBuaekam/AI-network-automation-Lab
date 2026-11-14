@@ -41,6 +41,16 @@ class Settings:
         self.local_ai_timeout = float(_env("LOCAL_AI_TIMEOUT", "600"))  # CPU inference is slow
         self.mock_ai_fixture = _env("MOCK_AI_FIXTURE", "/app/fixtures/mock_ai_response.json")
 
+        # GNS3 lab cross-check (read-only, optional). Suggests the interface mapping from the
+        # real cabling; SSH discovery and the admin's confirmation still decide.
+        self.gns3_enabled = _bool("GNS3_ENABLED", False)
+        self.gns3_url = _env("GNS3_URL", "http://192.168.192.131")
+        self.gns3_project = _env("GNS3_PROJECT", "ai-netauto-ospf")
+        self.gns3_token = _env("GNS3_TOKEN")
+        self.gns3_username = _env("GNS3_USERNAME")
+        self.gns3_password = _env("GNS3_PASSWORD")
+        self.gns3_timeout = float(_env("GNS3_TIMEOUT", "5"))
+
         # Auth
         self.admin_token = _env("ADMIN_TOKEN")
         self.worker_token = _env("WORKER_TOKEN")

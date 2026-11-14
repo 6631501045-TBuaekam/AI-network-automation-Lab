@@ -4,6 +4,7 @@ import re
 import time
 
 from .generator import PHYSICAL_RE
+from .gns3 import canonical_ifname
 
 IP = r"(?:\d{1,3}\.){3}\d{1,3}"
 IFN = r"(?:GigabitEthernet|FastEthernet|Ethernet|TenGigabitEthernet)\d+(?:/\d+){0,3}"
@@ -23,10 +24,12 @@ ALLOWED = [re.compile(p) for p in (
 )]
 
 CATEGORIES = ["addressing", "subnet", "interface_mapping", "ospf", "management", "safety", "ai_ambiguity"]
+LAB_CATEGORY = "gns3_lab"  # shown only when the GNS3 cross-check is enabled
 
 
 def validate(model: dict, issues: list, interface_map: dict, mapping_confirmed: bool,
-             configs: dict, discoveries: dict, inventory: dict, discovery_max_age_min: int) -> dict:
+             configs: dict, discoveries: dict, inventory: dict, discovery_max_age_min: int,
+             lab: dict | None = None) -> dict:
     found = list(issues)
 
     def add(cat, sev, msg):
@@ -135,10 +138,20 @@ def validate(model: dict, issues: list, interface_map: dict, mapping_confirmed: 
         if r.get("inventory_id") and r.get("inventory_id") not in (configs or {}):
             add("safety", "error", f"{rid}: no configuration could be generated (fix errors above)")
 
+    # GNS3 lab cross-check: warnings only. It can flag a cable mapped to the wrong port, but
+    # the admin decides (mapping confirmation + approval).
+    if lab is not None:
+        for net_map_rid, ports in (lab.get("ports") or {}).items():
+            for net, port in ports.items():
+                mapped = ((interface_map or {}).get(net_map_rid) or {}).get(net)
+                if mapped and canonical_ifname(mapped) != canonical_ifname(port):
+                    add(LAB_CATEGORY, "warning", f"{net_map_rid} {net} mapped to {mapped}, "
+                                                 f"but the GNS3 cable for it is on {port}")
+
     errors = [f for f in found if f["severity"] == "error"]
     warnings = [f for f in found if f["severity"] == "warning"]
     checks = []
-    for cat in CATEGORIES:
+    for cat in CATEGORIES + ([LAB_CATEGORY] if lab is not None else []):
         e = [f["message"] for f in errors if f["category"] == cat]
         w = [f["message"] for f in warnings if f["category"] == cat]
         checks.append({"name": cat, "status": "fail" if e else ("warn" if w else "pass"),

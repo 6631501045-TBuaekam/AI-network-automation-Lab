@@ -28,7 +28,7 @@ automatically.
 | `inventory/` | Router management addresses (no credentials) |
 | `gns3/` | Router management baselines, practice reset script, VPCS commands |
 | `docs/` | GNS3 + Ubuntu build guide, architecture & test report |
-| `tests/` | 28 automated tests incl. an SSH-based simulated IOS lab |
+| `tests/` | 37 automated tests incl. an SSH-based simulated IOS lab |
 | `samples/` | The exam diagram as PNG (with and without the requirements table) |
 
 ---
@@ -107,6 +107,30 @@ one address; validation then shows an error. Paste the written requirements (the
 addressing/OSPF table) into the requirements box before **Generate**: in testing every value
 was then correct and validation passed on every run.
 
+### Optional: GNS3 lab cross-check (read-only)
+An extra layer between **AI analysis** and the **interface mapping**. With it on, Review
+reads the open GNS3 project (nodes and cables) and:
+* warns when a device or cable the AI found is not in the lab, or the lab has a cable the
+  topology lacks;
+* suggests which router port carries which network **from the real cable** (e.g. R1
+  FastEthernet0/0 → PC1), instead of the ordered guess. A port is only used if SSH discovery
+  found that interface on the router;
+* warns if the confirmed mapping disagrees with the cabling.
+
+It only sends GET requests to the GNS3 API (plus a login call if you use a username), never
+changes the lab and never talks to the routers. Everything it reports is a **warning**: SSH
+discovery still supplies the real interface names, and the administrator still confirms the
+mapping, approves and deploys exactly as before. Management ports are recognised because
+their switch leads out of the lab to a Cloud/NAT node.
+
+```
+GNS3_ENABLED=true
+GNS3_URL=http://192.168.192.131
+GNS3_PROJECT=ai-netauto-ospf        # must be open in GNS3
+GNS3_TOKEN=<GNS3 API token>         # or GNS3_USERNAME / GNS3_PASSWORD (read-only user)
+```
+If GNS3 is unreachable or the project is closed, Review shows one warning and carries on.
+
 ### Optional rehearsal without GNS3
 `docker compose -f docker-compose.yml -f docker-compose.sim.yml up -d --build` swaps the
 routers for two simulated IOS routers (SSH on the same Docker network). Everything else -
@@ -166,12 +190,13 @@ Evidence screenshots for submission (save in `evidence/`):
 | AI error "credit balance too low" | Claude API needs prepaid credits (Console → Billing), separate from a Claude subscription |
 | Local model `unreachable` | Ollama running? `OLLAMA_HOST=0.0.0.0` on Linux; check `LOCAL_AI_BASE_URL` port |
 | AI error mentioning `response_format` | `AI_JSON_MODE=false` |
+| "GNS3 cross-check skipped" | GNS3 VM running? project open? `GNS3_URL` / token in `.env` |
 | Kafka UI empty | `docker compose logs kafka-init` - topic must be created |
 
 ## 7. Tests
 ```bash
 pip install -r backend/requirements.txt -r worker/requirements.txt pytest
-python -m pytest -q tests/     # 28 passed
+python -m pytest -q tests/     # 37 passed
 ```
 `tests/test_end_to_end.py` runs the complete workflow over real SSH against simulated IOS
 routers: discovery, review, approval, deploy, verification (FULL + routes + ping),

@@ -7,6 +7,7 @@ import re
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 from .inventory import _norm
+from .gns3 import canonical_ifname
 
 TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), "templates")
 _env = Environment(loader=FileSystemLoader(TEMPLATE_DIR), trim_blocks=True, lstrip_blocks=True,
@@ -34,9 +35,13 @@ def data_interfaces(discovery: dict) -> list[str]:
     return sorted(names, key=natural_key)
 
 
-def suggest_mapping(model: dict, discoveries: dict, inventory: dict) -> tuple[dict, list]:
+def suggest_mapping(model: dict, discoveries: dict, inventory: dict,
+                    lab_ports: dict | None = None) -> tuple[dict, list]:
     """Return ({router: {network: ifname}}, notes). Nothing is assumed silently: every
-    suggestion is shown to the admin, who must confirm the mapping before approval."""
+    suggestion is shown to the admin, who must confirm the mapping before approval.
+
+    Evidence, strongest first: inventory hint, GNS3 lab cable (lab_ports), CDP neighbour,
+    ordered guess. A name is only used if SSH discovery found it on the router."""
     mapping: dict = {}
     notes: list = []
     for rid, r in model["routers"].items():
@@ -54,6 +59,18 @@ def suggest_mapping(model: dict, discoveries: dict, inventory: dict) -> tuple[di
                 chosen[itf["network"]] = h
                 free.remove(h)
                 notes.append(f"{rid} {itf['network']} -> {h} (inventory hint)")
+        # GNS3 lab cabling (read-only cross-check): match the lab port to a discovered name
+        for net, port in ((lab_ports or {}).get(rid) or {}).items():
+            if net in chosen:
+                continue
+            match = next((n for n in free if canonical_ifname(n) == canonical_ifname(port)), None)
+            if match:
+                chosen[net] = match
+                free.remove(match)
+                notes.append(f"{rid} {net} -> {match} (GNS3 lab cable)")
+            else:
+                notes.append(f"{rid} {net}: GNS3 port {port} not among the discovered free "
+                             f"interfaces - not used")
         # CDP neighbours identify the router-to-router link when interfaces are already up
         for itf in r["interfaces"]:
             if itf["network"] in chosen or itf["role"] != "transit":

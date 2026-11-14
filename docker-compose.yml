@@ -77,6 +77,13 @@ services:
       AI_JSON_MODE: ${AI_JSON_MODE:-true}
       AI_TIMEOUT: ${AI_TIMEOUT:-120}
       LOCAL_AI_TIMEOUT: ${LOCAL_AI_TIMEOUT:-600}
+      # optional read-only GNS3 lab cross-check (GET requests only)
+      GNS3_ENABLED: ${GNS3_ENABLED:-false}
+      GNS3_URL: ${GNS3_URL:-http://192.168.192.131}
+      GNS3_PROJECT: ${GNS3_PROJECT:-ai-netauto-ospf}
+      GNS3_TOKEN: ${GNS3_TOKEN:-}
+      GNS3_USERNAME: ${GNS3_USERNAME:-}
+      GNS3_PASSWORD: ${GNS3_PASSWORD:-}
       ADMIN_TOKEN: ${ADMIN_TOKEN:?set ADMIN_TOKEN in .env}
       WORKER_TOKEN: ${WORKER_TOKEN:?set WORKER_TOKEN in .env}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092

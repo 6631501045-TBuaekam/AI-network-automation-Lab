@@ -21,6 +21,7 @@ from . import kafka_producer as kp
 from .ai import AIError, analyze_diagram
 from .config import settings
 from .generator import data_interfaces, generate_configs, suggest_mapping
+from .gns3 import lab_check
 from .inventory import load_inventory
 from .topology import build_model
 from .validator import validate
@@ -148,7 +149,9 @@ def index():
 @app.get("/api/health")
 def health():
     return {"status": "ok", "ai_provider": settings.ai_provider, "kafka_topic": settings.kafka_topic,
-            "kafka_enabled": settings.kafka_enabled, "time": time.time()}
+            "kafka_enabled": settings.kafka_enabled,
+            "gns3": ({"project": settings.gns3_project} if settings.gns3_enabled else None),
+            "time": time.time()}
 
 
 @app.get("/api/inventory")
@@ -314,16 +317,22 @@ def review(plan_id: str):
     imap = plan.get("interface_map") or {}
     confirmed = bool(plan.get("mapping_confirmed"))
     notes: list = []
+    # read-only GNS3 cross-check between AI analysis and the discovered mapping (optional)
+    lab = lab_check(model)
+    if lab is not None:
+        issues = issues + lab["issues"]
     complete = all(all(i["network"] in (imap.get(rid) or {}) for i in r["interfaces"])
                    for rid, r in model["routers"].items())
     if not imap or not complete:
-        imap, notes = suggest_mapping(model, discoveries, inv)
+        imap, notes = suggest_mapping(model, discoveries, inv, lab["ports"] if lab else None)
         confirmed = False
     configs = generate_configs(model, imap, plan_id, settings.ospf_transit_p2p)
     result = validate(model, issues, imap, confirmed, configs, discoveries, inv,
-                      settings.discovery_max_age_min)
+                      settings.discovery_max_age_min, lab)
     result["mapping_notes"] = notes
     result["model"] = model
+    result["gns3"] = ({"notes": lab["notes"], "summary": lab["summary"], "ports": lab["ports"]}
+                      if lab is not None else None)
     status = "REVIEWED" if result["ok"] else "REVIEW_FAILED"
     keep_approval = (plan.get("approval_hash") and configs and result["ok"]
                      and approval_hash(plan_id, configs) == plan["approval_hash"])
