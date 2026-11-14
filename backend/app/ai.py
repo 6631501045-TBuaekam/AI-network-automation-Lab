@@ -107,14 +107,15 @@ def _anthropic(image: bytes, media_type: str, requirements: str | None) -> tuple
     return text, model
 
 
-def _openai(image: bytes, media_type: str, requirements: str | None) -> tuple[str, str]:
-    if not settings.openai_api_key:
-        raise AIError("OPENAI_API_KEY is not set")
-    model = settings.ai_model or "gpt-4o"
+def _chat_completions(label: str, base_url: str, api_key: str | None, model: str, image: bytes,
+                      media_type: str, requirements: str | None, timeout: float) -> tuple[str, str]:
+    """POST {base_url}/chat/completions in the OpenAI format.
+
+    Used for OpenAI itself, every OpenAI-compatible cloud API (Gemini, Groq, OpenRouter,
+    GitHub Models, ...) and local servers (Ollama, LM Studio, vLLM, llama.cpp)."""
     data_url = f"data:{media_type};base64,{base64.b64encode(image).decode()}"
     body = {
         "model": model,
-        "response_format": {"type": "json_object"},
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": [
@@ -123,12 +124,39 @@ def _openai(image: bytes, media_type: str, requirements: str | None) -> tuple[st
             ]},
         ],
     }
-    r = httpx.post("https://api.openai.com/v1/chat/completions", json=body,
-                   timeout=settings.ai_timeout,
-                   headers={"Authorization": f"Bearer {settings.openai_api_key}"})
+    if settings.ai_json_mode:
+        body["response_format"] = {"type": "json_object"}
+    headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
+    url = base_url.rstrip("/") + "/chat/completions"
+    try:
+        r = httpx.post(url, json=body, timeout=timeout, headers=headers)
+    except httpx.HTTPError as exc:
+        raise AIError(f"{label} API at {base_url} unreachable: {exc}") from exc
     if r.status_code >= 400:
-        raise AIError(f"OpenAI API error {r.status_code}: {r.text[:500]}")
-    return r.json()["choices"][0]["message"]["content"], model
+        raise AIError(f"{label} API error {r.status_code}: {r.text[:500]}")
+    try:
+        content = r.json()["choices"][0]["message"]["content"]
+    except (ValueError, KeyError, IndexError, TypeError) as exc:
+        raise AIError(f"{label} API returned an unexpected response: {r.text[:500]}") from exc
+    if isinstance(content, list):  # some servers return content parts
+        content = "".join(p.get("text", "") for p in content if isinstance(p, dict))
+    return content or "", model
+
+
+def _openai(image: bytes, media_type: str, requirements: str | None) -> tuple[str, str]:
+    """OpenAI or any OpenAI-compatible cloud API, chosen by OPENAI_BASE_URL."""
+    if not settings.openai_api_key:
+        raise AIError("OPENAI_API_KEY is not set")
+    model = settings.ai_model or "gpt-4o"
+    return _chat_completions("OpenAI-compatible", settings.openai_base_url, settings.openai_api_key,
+                             model, image, media_type, requirements, settings.ai_timeout)
+
+
+def _local(image: bytes, media_type: str, requirements: str | None) -> tuple[str, str]:
+    """A model on your own machine (Ollama by default). Needs a vision-capable model."""
+    model = settings.ai_model or "llama3.2-vision"
+    return _chat_completions("Local model", settings.local_ai_base_url, settings.local_ai_api_key,
+                             model, image, media_type, requirements, settings.local_ai_timeout)
 
 
 def _mock(image: bytes, media_type: str, requirements: str | None) -> tuple[str, str]:
@@ -137,7 +165,7 @@ def _mock(image: bytes, media_type: str, requirements: str | None) -> tuple[str,
         return fh.read(), "mock-fixture"
 
 
-PROVIDERS = {"anthropic": _anthropic, "openai": _openai, "mock": _mock}
+PROVIDERS = {"anthropic": _anthropic, "openai": _openai, "local": _local, "mock": _mock}
 
 
 def analyze_diagram(image: bytes, media_type: str, requirements: str | None = None) -> dict:

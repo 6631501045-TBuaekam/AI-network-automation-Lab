@@ -26,12 +26,19 @@ class Settings:
         self.upload_dir = _env("UPLOAD_DIR", os.path.join(self.data_dir, "uploads"))
         self.inventory_path = _env("INVENTORY_PATH", "/config/devices.yaml")
 
-        # AI provider: anthropic | openai | mock (mock = offline fixture, development only)
+        # AI provider: anthropic | openai | local | mock (mock = offline fixture, development only)
+        #   openai = OpenAI or any OpenAI-compatible cloud API (set OPENAI_BASE_URL)
+        #   local  = a model on your own machine (Ollama, LM Studio, vLLM, llama.cpp)
         self.ai_provider = (_env("AI_PROVIDER", "anthropic") or "anthropic").lower()
         self.ai_model = _env("AI_MODEL")
         self.anthropic_api_key = _env("ANTHROPIC_API_KEY")
         self.openai_api_key = _env("OPENAI_API_KEY")
+        self.openai_base_url = _env("OPENAI_BASE_URL", "https://api.openai.com/v1")
+        self.local_ai_base_url = _env("LOCAL_AI_BASE_URL", "http://host.docker.internal:11434/v1")
+        self.local_ai_api_key = _env("LOCAL_AI_API_KEY")  # most local servers need none
+        self.ai_json_mode = _bool("AI_JSON_MODE", True)    # send response_format=json_object
         self.ai_timeout = float(_env("AI_TIMEOUT", "120"))
+        self.local_ai_timeout = float(_env("LOCAL_AI_TIMEOUT", "600"))  # CPU inference is slow
         self.mock_ai_fixture = _env("MOCK_AI_FIXTURE", "/app/fixtures/mock_ai_response.json")
 
         # Auth

@@ -28,7 +28,7 @@ automatically.
 | `inventory/` | Router management addresses (no credentials) |
 | `gns3/` | Router management baselines, practice reset script, VPCS commands |
 | `docs/` | GNS3 + Ubuntu build guide, architecture & test report |
-| `tests/` | 20 automated tests incl. an SSH-based simulated IOS lab |
+| `tests/` | 27 automated tests incl. an SSH-based simulated IOS lab |
 | `samples/` | The exam diagram as PNG (with and without the requirements table) |
 
 ---
@@ -82,6 +82,24 @@ bash scripts/preflight.sh      # config + reachability + stack check
 * Kafka UI: `http://<ubuntu-ip>:8080` → Topics → `network-config-jobs` → Messages
 
 Stop: `docker compose down` (data kept in volumes) · full reset: `docker compose down -v`.
+
+### Choosing the AI model
+Set these in `.env`, then `docker compose up -d backend`. The model must accept images.
+
+| Option | `.env` |
+|---|---|
+| Claude (default) | `AI_PROVIDER=anthropic`, `ANTHROPIC_API_KEY=...` |
+| OpenAI | `AI_PROVIDER=openai`, `OPENAI_API_KEY=...` |
+| Any OpenAI-compatible cloud API (Gemini, Groq, OpenRouter, GitHub Models - several have free keys) | `AI_PROVIDER=openai`, `OPENAI_API_KEY=<that service's key>`, `OPENAI_BASE_URL=<its URL, listed in .env.example>`, `AI_MODEL=<its vision model>` |
+| Local model, no key (Ollama on the Docker host) | install Ollama, `ollama pull llama3.2-vision`, then `AI_PROVIDER=local` |
+| Other local server (LM Studio, vLLM, llama.cpp) | `AI_PROVIDER=local`, `LOCAL_AI_BASE_URL=http://host.docker.internal:<port>/v1`, `AI_MODEL=<model>` |
+
+For a local model on Linux, let Ollama listen beyond localhost so the backend container
+can reach it: `sudo systemctl edit ollama` → add `[Service]` and
+`Environment="OLLAMA_HOST=0.0.0.0"` → `sudo systemctl restart ollama`. On CPU only, one
+analysis can take several minutes (`LOCAL_AI_TIMEOUT`, default 600 s), and small local
+models read diagrams less reliably than Claude - check every value on the Review page.
+If a service rejects `response_format`, set `AI_JSON_MODE=false`.
 
 ### Optional rehearsal without GNS3
 `docker compose -f docker-compose.yml -f docker-compose.sim.yml up -d --build` swaps the
@@ -139,12 +157,15 @@ Evidence screenshots for submission (save in `evidence/`):
 | SSH negotiation failed | IOS needs `crypto key generate rsa modulus 2048` and `ip ssh version 2` |
 | Verify FAILED neighbor INIT/2WAY | check R1–R2 cabling matches the confirmed mapping; `VERIFY_TIMEOUT` larger |
 | AI error 401/404 | API key / `AI_MODEL` name in `.env`, then `docker compose up -d backend` |
+| AI error "credit balance too low" | Claude API needs prepaid credits (Console → Billing), separate from a Claude subscription |
+| Local model `unreachable` | Ollama running? `OLLAMA_HOST=0.0.0.0` on Linux; check `LOCAL_AI_BASE_URL` port |
+| AI error mentioning `response_format` | `AI_JSON_MODE=false` |
 | Kafka UI empty | `docker compose logs kafka-init` - topic must be created |
 
 ## 7. Tests
 ```bash
 pip install -r backend/requirements.txt -r worker/requirements.txt pytest
-python -m pytest -q tests/     # 20 passed
+python -m pytest -q tests/     # 27 passed
 ```
 `tests/test_end_to_end.py` runs the complete workflow over real SSH against simulated IOS
 routers: discovery, review, approval, deploy, verification (FULL + routes + ping),
