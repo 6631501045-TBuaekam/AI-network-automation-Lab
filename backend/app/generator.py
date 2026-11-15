@@ -177,6 +177,13 @@ def expected_state(model: dict, rid: str, if_map: dict) -> dict:
 def generate_configs(model: dict, interface_map: dict, plan_id: str, p2p_transit: bool,
                      discoveries: dict | None = None) -> dict:
     out = {}
+    # No config without a usable OSPF process id and area. The validator already reports
+    # them as errors ("OSPF process id not specified" ...) - never crash on them.
+    try:
+        int(model["routing"].get("process_id"))
+        int(model["routing"].get("area"))
+    except (TypeError, ValueError):
+        return out
     for rid, r in model["routers"].items():
         if not r.get("inventory_id") or not r.get("router_id"):
             continue

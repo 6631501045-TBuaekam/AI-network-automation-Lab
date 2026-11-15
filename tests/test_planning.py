@@ -158,3 +158,16 @@ def test_alternative_topology_three_routers():
     assert " network 172.16.12.0 0.0.0.3 area 0" in r2["lines"]
     assert configs["R1"]["expected"]["remote_networks"] == ["172.16.23.0/30", "172.16.3.0/24"]
     assert configs["R2"]["expected"]["neighbors"] == ["1.1.1.1", "3.3.3.3"]
+
+
+def test_picture_without_routing_info_gives_errors_not_a_crash():
+    """Diagram-only picture: the AI leaves protocol/process/area empty. Review must show
+    validation errors (fix with Edit JSON), not crash with a server error."""
+    t = copy.deepcopy(TOPO)
+    t["routing"] = {"protocol": None, "process_id": None, "area": None,
+                    "router_ids": {"R1": "1.1.1.1", "R2": "2.2.2.2"}}
+    model, imap, configs, v = run(topo=t)
+    assert configs == {}
+    msgs = [e["message"] for e in v["errors"]]
+    assert any("process id not specified" in m for m in msgs)
+    assert any("area not specified" in m for m in msgs)
