@@ -7,7 +7,8 @@ const state = { planId: localStorage.getItem("planId"), plan: null, jobs: [], di
 function toast(msg, err = false) {
   const d = document.createElement("div");
   d.textContent = msg; if (err) d.className = "err";
-  $("#toast").appendChild(d); setTimeout(() => d.remove(), err ? 9000 : 4000);
+  d.title = "click to close"; d.onclick = () => d.remove();
+  $("#toast").appendChild(d); setTimeout(() => d.remove(), err ? 30000 : 5000);
 }
 
 async function api(method, path, body, admin = false) {
