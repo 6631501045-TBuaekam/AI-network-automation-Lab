@@ -28,8 +28,8 @@ sends the job through **Kafka** to a **Python worker**, which logs in to the rou
 | `docs/LAB_SETUP.md` | How to build the GNS3 lab |
 | `docs/REPORT.md` | Short report: design and test results |
 | `evidence/` | Screenshots from the live test |
-| `samples/` | The exam diagram |
-| `tests/` | 50 automated tests |
+| `samples/` | The exam diagram and its requirements as text (`exam-requirements.txt`) |
+| `tests/` | 52 automated tests |
 
 ## 1. Build the lab
 Follow [docs/LAB_SETUP.md](docs/LAB_SETUP.md): GNS3 routers, PCs, and the management
@@ -66,7 +66,10 @@ an Ubuntu VM. It only needs to reach the routers' management IPs.
 ## 4. Demo steps
 1. Instructor resets the routers (management SSH stays on).
 2. Open the web page. Paste the admin token (top right). The health box turns green.
-3. Choose the diagram. Paste the hand-out text into "Written requirements".
+3. Choose the diagram (`samples/exam-topology.png`, the one with the table). Paste the
+   requirements into "Written requirements" - **one line per item, label first**. For the
+   exam it is ready in `samples/exam-requirements.txt`. Do not paste the table straight from
+   the PDF: the copy mixes up the rows and the AI then misses R2's link address.
 4. Click **Run**. It uploads, runs the AI, reads the real interface names from the
    routers, and checks everything. It **stops before approval**.
    If the AI marks something as "blocking", fix it with **Edit JSON** and click **Review**.
@@ -93,9 +96,10 @@ The model must be able to read images. Set it in `.env`, then run
 | Other cloud API (Gemini, Groq, OpenRouter, GitHub Models) | `AI_PROVIDER=openai`, `OPENAI_API_KEY=...`, `OPENAI_BASE_URL=...`, `AI_MODEL=...` (URLs are in `.env.example`) |
 | Local model, free (Ollama) | Install Ollama, run `ollama pull qwen2.5vl:7b`, set `AI_PROVIDER=local` |
 
-**Tested:** local `qwen2.5vl:7b` on a laptop GPU, about 25-40 seconds per diagram. Paste
-the hand-out text in step 3 - then it got every value right in every test. From the
-picture alone it sometimes misreads one address (the checks catch it).
+**Tested:** local `qwen2.5vl:7b` on a laptop GPU, about 25-40 seconds per diagram. With the
+picture that has the table **and** `samples/exam-requirements.txt` pasted, it got every value
+right in every test. With the picture alone, or with text copied straight from the PDF, it
+misses R2's link address (the checks catch it and nothing is deployed).
 
 Ollama on Linux: allow outside connections, or the Docker container cannot reach it:
 `sudo systemctl edit ollama` → add `Environment="OLLAMA_HOST=0.0.0.0"` under `[Service]`
@@ -139,7 +143,7 @@ lock-out).
 ## 8. Tests
 ```bash
 pip install -r backend/requirements.txt -r worker/requirements.txt pytest
-python -m pytest -q tests/     # 50 passed
+python -m pytest -q tests/     # 52 passed
 ```
 The tests include a full run against simulated routers over real SSH.
 

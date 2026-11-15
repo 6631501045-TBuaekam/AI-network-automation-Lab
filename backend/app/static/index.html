@@ -39,7 +39,7 @@
           <span>Drop a PNG/JPG here or click to choose</span>
         </label>
         <label class="lbl" for="requirements">Written requirements (optional - e.g. routing table from the hand-out)</label>
-        <textarea id="requirements" rows="4" placeholder="Paste any requirement text that is not in the image. Leave empty to rely on the image only."></textarea>
+        <textarea id="requirements" rows="4" placeholder="One line per item, label first. Example:&#10;R1: LAN 10.0.0.1/24, link to R2 10.1.0.1/24&#10;R2: link to R1 10.1.0.2/24, LAN 10.2.0.2/24&#10;Routing: OSPFv2 process 1, Area 0, R1 ID 1.1.1.1, R2 ID 2.2.2.2&#10;(exam text ready to paste: samples/exam-requirements.txt)"></textarea>
         <div class="actions">
           <button id="btnUpload" class="btn" disabled>Upload diagram</button>
           <button id="btnRun" class="btn primary" disabled title="Upload, Generate, interface discovery and Review in one go - stops before approval">Run (new plan) &#9654;</button>

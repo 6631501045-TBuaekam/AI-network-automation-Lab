@@ -96,17 +96,17 @@ The first three lines remove an earlier plan, so a new plan replaces an old one 
 
 ## 7. Test results
 
-### 7.1 Automated tests - 50 passed
+### 7.1 Automated tests - 52 passed
 | Area | Tests |
 |---|---|
 | Reading router output (parsers) | 8 |
-| Planning and checks (incl. a 3-router alternative topology) | 10 |
-| Full run against simulated routers over real SSH (also: duplicate job, changed config, wrong password, second run with a new plan) | 4 |
+| Planning and checks (incl. a 3-router alternative topology, missing OSPF values) | 11 |
+| Full run against simulated routers over real SSH (also: duplicate job, changed config, wrong password, second run with a new plan, text pasted after upload) | 5 |
 | AI options (cloud, local, errors) | 8 |
 | GNS3 check | 13 |
 | SSH session handling | 4 |
 | Clean-up of the previous plan | 3 |
-| **Total** | **50** |
+| **Total** | **52** |
 
 ### 7.2 Live test in GNS3 (2026-11-14)
 The routers were first reset to the exam starting state (data ports empty, no OSPF,

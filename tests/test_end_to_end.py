@@ -196,3 +196,15 @@ def test_second_run_replaces_previous_config(env):
     assert r1.interfaces["GigabitEthernet0/1"]["ip"] == "10.9.0.1"
     assert r1.interfaces["GigabitEthernet0/3"]["ip"] == "127.0.0.1"  # management untouched
     assert "GigabitEthernet0/3" not in r1.defaulted
+
+
+def test_generate_uses_requirements_pasted_after_upload(env):
+    h = env["http"]
+    with open(os.path.join(ROOT, "samples", "exam-topology.png"), "rb") as fh:
+        plan = h.post("/api/diagrams", files={"file": ("topo.png", fh, "image/png")}).json()
+    assert plan["requirements"] == ""
+    text = open(os.path.join(ROOT, "samples", "exam-requirements.txt"), encoding="utf-8").read()
+    plan = h.post(f"/api/plans/{plan['id']}/generate", json={"requirements": text}).json()
+    assert plan["requirements"] == text and plan["status"] == "ANALYZED"
+    plan = h.post(f"/api/plans/{plan['id']}/generate").json()  # no body: keeps the stored text
+    assert plan["requirements"] == text

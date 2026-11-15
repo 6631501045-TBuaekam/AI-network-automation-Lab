@@ -83,7 +83,7 @@ $("#btnUpload").onclick = () => busy($("#btnUpload"), async () => {
 /* ---------------- generate */
 $("#btnGenerate").onclick = () => busy($("#btnGenerate"), async () => {
   $("#aiInfo").textContent = "AI is analysing the diagram… (about 30 seconds)";
-  setPlan(await api("POST", `/api/plans/${state.planId}/generate`));
+  setPlan(await api("POST", `/api/plans/${state.planId}/generate`, { requirements: $("#requirements").value }));
   $("#sec-generate").scrollIntoView({ behavior: "smooth" });
   const blocking = (state.plan.topology.ambiguities || []).filter((a) => a.severity === "blocking");
   if (blocking.length) {

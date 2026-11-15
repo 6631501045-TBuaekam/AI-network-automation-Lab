@@ -222,11 +222,20 @@ def get_plan(plan_id: str):
 
 
 # ------------------------------------------------------------------ 2. generate (AI)
+class GenerateRequest(BaseModel):
+    requirements: str | None = None  # current text of the "Written requirements" box
+
+
 @app.post("/api/plans/{plan_id}/generate")
-def generate(plan_id: str):
+def generate(plan_id: str, body: GenerateRequest | None = None):
     plan = _plan(plan_id)
     if plan["status"] in ("DEPLOYING",):
         raise HTTPException(409, "plan is being deployed")
+    # text pasted after Upload is used too (not only the text sent with the upload)
+    if body and body.requirements is not None and body.requirements != (plan.get("requirements") or ""):
+        db.execute("UPDATE plans SET requirements=?, updated_at=? WHERE id=?",
+                   (body.requirements[:4000], db.now(), plan_id))
+        plan = _plan(plan_id)
     d = db.one("SELECT * FROM diagrams WHERE id=?", (plan["diagram_id"],))
     with open(d["path"], "rb") as fh:
         image = fh.read()
