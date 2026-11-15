@@ -40,7 +40,17 @@ async def lifespan(_app):
 
 app = FastAPI(title="AI Network Automation System", version="1.0.0", lifespan=lifespan)
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+class NoCacheStatic(StaticFiles):
+    """Browsers must re-check the page files, so an update is never hidden by a cached app.js."""
+    async def get_response(self, path, scope):
+        resp = await super().get_response(path, scope)
+        resp.headers["Cache-Control"] = "no-cache"
+        return resp
+
+
+app.mount("/static", NoCacheStatic(directory=STATIC_DIR), name="static")
 
 JOB_SCHEMA = "network-config-job/v1"
 ACTIVE = ("PENDING", "RUNNING")
@@ -143,7 +153,7 @@ def _with_events(job: dict) -> dict:
 # ------------------------------------------------------------------ basic endpoints
 @app.get("/")
 def index():
-    return FileResponse(os.path.join(STATIC_DIR, "index.html"))
+    return FileResponse(os.path.join(STATIC_DIR, "index.html"), headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/api/health")
