@@ -60,7 +60,8 @@ $("#btnRun").onclick = () => busy($("#btnRun"), async () => {
   const blocking = (state.plan.topology.ambiguities || []).filter((a) => a.severity === "blocking");
   if (blocking.length) {
     $("#sec-generate").scrollIntoView({ behavior: "smooth" });
-    throw new Error("Run stopped: the AI flagged blocking ambiguities - fix them with Edit JSON, then click Review");
+    throw new Error(`Run stopped: AI could not find ${blocking.length} required value(s) in the picture (red boxes). ` +
+                    "Paste the hand-out text in 'Written requirements' and Run again, or fix them with Edit JSON and click Review.");
   }
   toast("Run: waiting for interface discovery (Kafka → worker)");
   for (let t = 0; t < 90; t++) {   // up to ~3 min
@@ -80,9 +81,14 @@ $("#btnUpload").onclick = () => busy($("#btnUpload"), async () => {
 
 /* ---------------- generate */
 $("#btnGenerate").onclick = () => busy($("#btnGenerate"), async () => {
-  $("#aiInfo").textContent = "AI is analysing the diagram…";
+  $("#aiInfo").textContent = "AI is analysing the diagram… (about 30 seconds)";
   setPlan(await api("POST", `/api/plans/${state.planId}/generate`));
-  toast("AI analysis complete; interface discovery queued on Kafka");
+  $("#sec-generate").scrollIntoView({ behavior: "smooth" });
+  const blocking = (state.plan.topology.ambiguities || []).filter((a) => a.severity === "blocking");
+  if (blocking.length) {
+    toast(`AI could not find ${blocking.length} required value(s) in the picture (red boxes). ` +
+          "Paste the hand-out text in 'Written requirements' and upload again, or fix them with Edit JSON.", true);
+  } else toast("AI analysis complete - interface discovery started. Next: Review");
 });
 $("#btnEditJson").onclick = () => {
   const ta = $("#topologyEdit"); ta.hidden = !ta.hidden; $("#btnSaveJson").hidden = ta.hidden;
