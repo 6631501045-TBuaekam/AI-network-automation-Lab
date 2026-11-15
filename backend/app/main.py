@@ -12,7 +12,7 @@ import time
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -153,7 +153,13 @@ def _with_events(job: dict) -> dict:
 # ------------------------------------------------------------------ basic endpoints
 @app.get("/")
 def index():
-    return FileResponse(os.path.join(STATIC_DIR, "index.html"), headers={"Cache-Control": "no-cache"})
+    # add ?v=<file time> to app.js / styles.css so a browser can never keep an old copy
+    with open(os.path.join(STATIC_DIR, "index.html"), encoding="utf-8") as fh:
+        page = fh.read()
+    for name in ("app.js", "styles.css"):
+        v = int(os.path.getmtime(os.path.join(STATIC_DIR, name)))
+        page = page.replace(f"/static/{name}\"", f"/static/{name}?v={v}\"")
+    return HTMLResponse(page, headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/api/health")
