@@ -5,6 +5,7 @@ credentials and has no way to reach the routers - all device access happens in t
 worker, after human approval, via Kafka.
 """
 import base64
+import ipaddress
 import json
 import re
 
@@ -209,17 +210,26 @@ def read_text(image: bytes, media_type: str) -> str | None:
 _CIDR = re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}/\d{1,2}\b")
 
 
+def _network(cidr: str):
+    try:
+        return ipaddress.ip_network(cidr, strict=False)
+    except ValueError:
+        return None
+
+
 def _ocr_mismatches(topology: dict, ocr_text: str) -> list:
     """Networks the AI reports that the OCR never saw, when the picture writes networks as
     a.b.c.d/nn. Catches a misread digit that the other checks can't see, because a misread
     network still agrees with itself."""
     seen = set(_CIDR.findall(ocr_text))
+    # 10.0.0.1/24 written next to a router also counts as network 10.0.0.0/24
+    seen_nets = {_network(c) for c in seen} - {None}
     if not seen:  # networks not written in CIDR form (e.g. dotted masks) - nothing to compare
         return []
     issues = []
     for n in topology.get("networks") or []:
         cidr = str((n.get("cidr") or n.get("network")) if isinstance(n, dict) else n)
-        if _CIDR.fullmatch(cidr) and cidr not in seen:
+        if _CIDR.fullmatch(cidr) and _network(cidr) not in seen_nets:
             issues.append({"item": f"network {cidr}",
                            "issue": f"not found in the text read from the picture "
                                     f"({', '.join(sorted(seen))}). Check this network against the picture.",

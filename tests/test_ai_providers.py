@@ -176,5 +176,8 @@ def test_network_missing_from_ocr_text_is_flagged():
     issues = ai._ocr_mismatches(topo, "PC1 172.20.5.0/27 .1 R1 10.255.0.0/30 .2 R2")
     assert [i["item"] for i in issues] == ["network 172.20.30.0/27"]
     assert issues[0]["severity"] == "warning"
+    # an address written with its mask (10.0.0.1/24) counts as its network (10.0.0.0/24)
+    exam = {"networks": [{"cidr": "10.0.0.0/24"}, {"cidr": "10.1.0.0/24"}]}
+    assert ai._ocr_mismatches(exam, "PC1 10.0.0.10/24 R1 10.0.0.1/24 10.1.0.1/24 R2 10.1.0.2/24") == []
     # pictures that write masks instead of /nn give nothing to compare against
     assert ai._ocr_mismatches(topo, "192.168.50.66 255.255.255.192") == []
