@@ -104,7 +104,13 @@ def parse_ospf_processes(text: str) -> list[int]:
     return sorted({int(p) for p in re.findall(r'Routing Protocol is "ospf (\d+)"', text)})
 
 
-def parse_ip_protocols(text: str) -> dict:
+def parse_ip_protocols(text: str, process_id: int | None = None) -> dict:
+    """The OSPF section of `show ip protocols`: the expected process if given (a router may
+    run several), else the first one."""
+    blocks = re.split(r'(?=Routing Protocol is ")', text)
+    ospf = [b for b in blocks if b.startswith('Routing Protocol is "ospf ')]
+    wanted = [b for b in ospf if process_id is not None and b.startswith(f'Routing Protocol is "ospf {process_id}"')]
+    text = (wanted or ospf or [text])[0]
     res = {"process_id": None, "router_id": None, "networks": [], "passive_interfaces": []}
     m = re.search(r'Routing Protocol is "ospf (\d+)"', text)
     if m:
@@ -148,7 +154,8 @@ def parse_ping(text: str) -> dict:
 def evaluate_verification(expected: dict, neigh_txt: str, routes_txt: str, proto_txt: str) -> dict:
     neighbors = parse_ospf_neighbors(neigh_txt)
     routes = parse_ospf_routes(routes_txt)
-    proto = parse_ip_protocols(proto_txt)
+    proto = parse_ip_protocols(proto_txt, int(expected.get("process_id") or -1))
+    others = [p for p in parse_ospf_processes(proto_txt) if p != proto["process_id"]]
     checks = []
 
     def check(name, ok, detail):
@@ -165,6 +172,8 @@ def evaluate_verification(expected: dict, neigh_txt: str, routes_txt: str, proto
     check("OSPF process id", proto["process_id"] == int(expected.get("process_id") or -1),
           f"running ospf {proto['process_id']}")
     check("OSPF router-id", proto["router_id"] == expected.get("router_id"), f"router-id {proto['router_id']}")
+    check("no other OSPF process", not others,
+          "none" if not others else f"also running ospf {others} - left over from an earlier config")
     passive = set(proto["passive_interfaces"])
     for p in expected.get("passive_interfaces", []):
         check(f"{p} passive", p in passive, "passive" if p in passive else "not passive")

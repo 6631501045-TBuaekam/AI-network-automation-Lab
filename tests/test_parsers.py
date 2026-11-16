@@ -120,3 +120,14 @@ def test_ospf_processes_from_show_ip_protocols():
            'Routing Protocol is "ospf 7"\n  Router ID 7.7.7.7\n')
     assert parse_ospf_processes(txt) == [1, 7]
     assert parse_ospf_processes("") == []
+
+
+def test_verification_reads_the_expected_process_and_flags_leftovers():
+    from parsers import evaluate_verification
+    proto = ('Routing Protocol is "ospf 70"\n  Router ID 7.0.0.1\n'
+             'Routing Protocol is "ospf 1"\n  Router ID 1.1.1.1\n')
+    ev = evaluate_verification({"process_id": 1, "router_id": "1.1.1.1"}, "", "", proto)
+    checks = {c["name"]: c for c in ev["checks"]}
+    assert checks["OSPF process id"]["ok"] and checks["OSPF router-id"]["ok"]
+    assert not checks["no other OSPF process"]["ok"]
+    assert "70" in checks["no other OSPF process"]["detail"]
