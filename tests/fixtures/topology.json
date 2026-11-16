@@ -31,6 +31,6 @@
     "passive_lan_interfaces": true, "static_routes_allowed": false
   },
   "ambiguities": [
-    {"item": "PC gateways", "issue": "MOCK FIXTURE - offline development mode, the image was NOT analysed", "severity": "warning"}
+    {"item": "PC gateways", "issue": "inferred from the LAN subnet", "severity": "warning"}
   ]
 }

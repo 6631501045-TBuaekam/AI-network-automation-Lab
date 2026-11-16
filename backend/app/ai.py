@@ -145,10 +145,10 @@ def _chat_completions(label: str, base_url: str, api_key: str | None, model: str
 
 
 def _openai(image: bytes, media_type: str, requirements: str | None) -> tuple[str, str]:
-    """OpenAI or any OpenAI-compatible cloud API, chosen by OPENAI_BASE_URL."""
+    """Google Gemini by default, or any other OpenAI-style cloud API, chosen by OPENAI_BASE_URL."""
     if not settings.openai_api_key:
         raise AIError("OPENAI_API_KEY is not set")
-    model = settings.ai_model or "gpt-4o"
+    model = settings.ai_model or "gemini-4-hydrogen"
     return _chat_completions("OpenAI-compatible", settings.openai_base_url, settings.openai_api_key,
                              model, image, media_type, requirements, settings.ai_timeout)
 
@@ -160,13 +160,7 @@ def _local(image: bytes, media_type: str, requirements: str | None) -> tuple[str
                              model, image, media_type, requirements, settings.local_ai_timeout)
 
 
-def _mock(image: bytes, media_type: str, requirements: str | None) -> tuple[str, str]:
-    """Offline development mode. NOT for the exam demo - it ignores the image."""
-    with open(settings.mock_ai_fixture, encoding="utf-8") as fh:
-        return fh.read(), "mock-fixture"
-
-
-PROVIDERS = {"anthropic": _anthropic, "openai": _openai, "local": _local, "mock": _mock}
+PROVIDERS = {"anthropic": _anthropic, "openai": _openai, "local": _local}
 
 # Physical interface names never come from the diagram (they are discovered over SSH and the
 # admin confirms the mapping), so an AI "ambiguity" about them can never be acted on. Smaller

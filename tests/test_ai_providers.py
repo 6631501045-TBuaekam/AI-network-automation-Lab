@@ -9,7 +9,7 @@ from app import ai
 from app.config import reload_settings
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-FIXTURE = open(os.path.join(ROOT, "backend", "fixtures", "mock_ai_response.json"), encoding="utf-8").read()
+FIXTURE = open(os.path.join(ROOT, "tests", "fixtures", "topology.json"), encoding="utf-8").read()
 AI_VARS = ("AI_PROVIDER", "AI_MODEL", "OPENAI_API_KEY", "OPENAI_BASE_URL", "LOCAL_AI_BASE_URL",
            "LOCAL_AI_API_KEY", "AI_JSON_MODE", "LOCAL_AI_TIMEOUT")
 
@@ -30,7 +30,7 @@ def capture(monkeypatch):
     yield calls
     for v in AI_VARS:
         monkeypatch.delenv(v, raising=False)
-    monkeypatch.setenv("AI_PROVIDER", "mock")
+    monkeypatch.setenv("AI_PROVIDER", "test")
     reload_settings()
 
 
@@ -41,12 +41,12 @@ def _run(monkeypatch, **env):
     return ai.analyze_diagram(b"\x89PNG fake", "image/png")
 
 
-def test_openai_default_url(capture, monkeypatch):
+def test_openai_defaults_to_gemini(capture, monkeypatch):
     out = _run(monkeypatch, AI_PROVIDER="openai", OPENAI_API_KEY="k1")
     c = capture[0]
-    assert c["url"] == "https://api.openai.com/v1/chat/completions"
+    assert c["url"] == "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
     assert c["headers"]["Authorization"] == "Bearer k1"
-    assert c["body"]["model"] == "gpt-4o"
+    assert c["body"]["model"] == "gemini-4-hydrogen"
     assert c["body"]["response_format"] == {"type": "json_object"}
     assert out["provider"] == "openai" and out["topology"]["devices"]
 
@@ -100,7 +100,7 @@ def test_unreachable_server_is_reported(monkeypatch):
         with pytest.raises(ai.AIError, match="unreachable"):
             _run(monkeypatch, AI_PROVIDER="local")
     finally:
-        monkeypatch.setenv("AI_PROVIDER", "mock")
+        monkeypatch.setenv("AI_PROVIDER", "test")
         reload_settings()
 
 
@@ -114,7 +114,7 @@ def test_content_parts_are_joined(monkeypatch):
         out = _run(monkeypatch, AI_PROVIDER="local")
         assert out["topology"] == {**json.loads(FIXTURE), **out["topology"]}
     finally:
-        monkeypatch.setenv("AI_PROVIDER", "mock")
+        monkeypatch.setenv("AI_PROVIDER", "test")
         reload_settings()
 
 
@@ -135,5 +135,5 @@ def test_interface_name_ambiguities_are_dropped(monkeypatch):
         out = _run(monkeypatch, AI_PROVIDER="local")
         assert [a["item"] for a in out["topology"]["ambiguities"]] == ["R2 router-id", "PC gateways"]
     finally:
-        monkeypatch.setenv("AI_PROVIDER", "mock")
+        monkeypatch.setenv("AI_PROVIDER", "test")
         reload_settings()

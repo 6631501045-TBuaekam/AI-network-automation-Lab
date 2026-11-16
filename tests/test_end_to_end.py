@@ -1,5 +1,5 @@
 """Full workflow against simulated IOS routers reachable over real SSH:
-upload -> generate (AI mock) -> discovery via worker -> review -> confirm mapping -> approve
+upload -> generate (test AI provider) -> discovery via worker -> review -> confirm mapping -> approve
 -> deploy (Kafka message) -> worker (Paramiko) -> verify (OSPF FULL, routes, ping)."""
 import json
 import os

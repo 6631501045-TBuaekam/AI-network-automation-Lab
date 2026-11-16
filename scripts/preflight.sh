@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run before the demo (on the machine that runs Docker): checks settings, routers and containers.
+# Run before use (on the machine that runs Docker): checks settings, routers and containers.
 set -u
 cd "$(dirname "$0")/.."
 ok()  { printf '  \033[32mOK\033[0m   %s\n' "$1"; }
@@ -19,8 +19,11 @@ if [ -f .env ]; then
   if grep -qE '^GNS3_ENABLED=true' .env && ! grep -qE '^GNS3_URL=.+' .env; then
     bad "GNS3_ENABLED=true but GNS3_URL is empty"
   fi
-  prov=$(grep -E '^AI_PROVIDER=' .env | cut -d= -f2)
-  [ "$prov" = "mock" ] && bad "AI_PROVIDER=mock is a fake AI - choose a real model for the demo" || ok "AI provider: $prov"
+  prov=$(grep -E '^AI_PROVIDER=' .env | cut -d= -f2 | tr -d '\r')
+  prov=${prov:-openai}   # same default as the backend (Google Gemini)
+  case "$prov" in anthropic|openai|local) ok "AI provider: $prov" ;; *) bad "AI_PROVIDER must be openai, anthropic or local (got '$prov')" ;; esac
+  [ "$prov" = "openai" ] && { grep -qE '^OPENAI_API_KEY=.+' .env && ok "OPENAI_API_KEY set" || bad "OPENAI_API_KEY empty (needs a Gemini key)"; }
+  [ "$prov" = "anthropic" ] && { grep -qE '^ANTHROPIC_API_KEY=.+' .env && ok "ANTHROPIC_API_KEY set" || bad "ANTHROPIC_API_KEY empty"; }
 fi
 
 echo "Router management reachability (SSH port 22 from this machine)"

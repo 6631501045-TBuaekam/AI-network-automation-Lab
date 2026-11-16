@@ -13,8 +13,7 @@ os.environ.update({
     "DB_PATH": os.path.join(_tmp, "test.db"),
     "UPLOAD_DIR": os.path.join(_tmp, "uploads"),
     "INVENTORY_PATH": os.path.join(_tmp, "devices.yaml"),
-    "AI_PROVIDER": "mock",
-    "MOCK_AI_FIXTURE": os.path.join(ROOT, "backend", "fixtures", "mock_ai_response.json"),
+    "AI_PROVIDER": "test",
     "ADMIN_TOKEN": "test-admin-token",
     "WORKER_TOKEN": "test-worker-token",
     "KAFKA_ENABLED": "false",
@@ -24,3 +23,17 @@ os.environ.update({
     "ROUTER_SSH_USERNAME": "netadmin",
     "ROUTER_SSH_PASSWORD": "lab-pass",
 })
+
+# The app only ships real AI providers. Tests register their own provider that answers with a
+# known topology, so they run offline and give the same result every time.
+from app import ai  # noqa: E402
+
+TOPOLOGY_FILE = os.path.join(ROOT, "tests", "fixtures", "topology.json")
+
+
+def _test_provider(image: bytes, media_type: str, requirements: str | None) -> tuple[str, str]:
+    with open(TOPOLOGY_FILE, encoding="utf-8") as fh:
+        return fh.read(), "test-topology"
+
+
+ai.PROVIDERS["test"] = _test_provider

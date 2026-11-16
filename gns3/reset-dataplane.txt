@@ -1,4 +1,4 @@
-! PRACTICE ONLY - does what the instructor's reset does (exam step 1).
+! PRACTICE ONLY - puts the routers back to the starting state (management stays on).
 ! Removes the data-port and OSPF config but keeps management SSH (Fa1/1).
 ! Not needed between runs: a new Run already removes the old config.
 ! Never use it during the final demonstration.

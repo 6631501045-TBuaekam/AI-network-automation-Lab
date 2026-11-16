@@ -6,7 +6,6 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
-COPY fixtures ./fixtures
 RUN useradd --uid 10001 --create-home netauto && mkdir -p /data && chown netauto /data
 USER netauto
 

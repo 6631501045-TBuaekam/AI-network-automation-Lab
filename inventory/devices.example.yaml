@@ -1,4 +1,4 @@
-# Router management addresses (the instructor gives these). No passwords here - they are in .env.
+# Router management addresses. No passwords here - they are in .env.
 # Copy to inventory/devices.yaml and replace each <...> with the real value.
 #
 # The names R1, R2 must match the router names in the diagram ("router1" -> R1 also works).
@@ -8,7 +8,7 @@ devices:
     port: 22
     # Optional - only if the management interface cannot be found automatically:
     # mgmt_interface: FastEthernet1/1
-    # Optional cabling hints (otherwise the page suggests a mapping and you confirm it):
+    # Optional cabling hints (otherwise the page suggests a mapping to confirm):
     # interface_hints:
     #   10.0.0.0/24: FastEthernet0/0
     #   10.1.0.0/24: FastEthernet1/0

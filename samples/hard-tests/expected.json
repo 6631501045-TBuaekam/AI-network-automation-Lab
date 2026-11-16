@@ -1,0 +1,224 @@
+[
+ {
+  "file": "01-handdrawn-zigzag.png",
+  "why": "shaky lines, rotated labels, /27 LAN, values scattered",
+  "interfaces": {
+   "R1": {
+    "172.20.5.0/27": "172.20.5.1",
+    "10.255.0.0/30": "10.255.0.1"
+   },
+   "R2": {
+    "10.255.0.0/30": "10.255.0.2",
+    "172.20.9.0/24": "172.20.9.1"
+   }
+  },
+  "hosts": {
+   "PC1": [
+    "172.20.5.30",
+    "172.20.5.1"
+   ],
+   "PC2": [
+    "172.20.9.50",
+    "172.20.9.1"
+   ]
+  },
+  "ospf": {
+   "process_id": 7,
+   "area": 0,
+   "router_ids": {
+    "R1": "7.7.7.1",
+    "R2": "7.7.7.2"
+   }
+  }
+ },
+ {
+  "file": "02-dotted-masks-vertical.png",
+  "why": "dotted-decimal masks, no network labels, vertical",
+  "interfaces": {
+   "R1": {
+    "192.168.50.64/26": "192.168.50.65",
+    "10.0.99.8/29": "10.0.99.9"
+   },
+   "R2": {
+    "10.0.99.8/29": "10.0.99.14",
+    "192.168.60.128/25": "192.168.60.129"
+   }
+  },
+  "hosts": {
+   "PC1": [
+    "192.168.50.66",
+    "192.168.50.65"
+   ],
+   "PC2": [
+    "192.168.60.200",
+    "192.168.60.129"
+   ]
+  },
+  "ospf": {
+   "process_id": 99,
+   "area": 0,
+   "router_ids": {
+    "R1": "9.9.9.1",
+    "R2": "9.9.9.2"
+   }
+  }
+ },
+ {
+  "file": "03-switch-mgmt-legend.png",
+  "why": "switch with 2 PCs, mgmt cloud that must be ignored, legend",
+  "interfaces": {
+   "R1": {
+    "10.1.1.0/24": "10.1.1.1",
+    "10.12.0.0/30": "10.12.0.1"
+   },
+   "R2": {
+    "10.12.0.0/30": "10.12.0.2",
+    "10.2.2.0/24": "10.2.2.1"
+   }
+  },
+  "hosts": {
+   "PC1": [
+    "10.1.1.11",
+    "10.1.1.1"
+   ],
+   "PC3": [
+    "10.1.1.13",
+    "10.1.1.1"
+   ],
+   "PC2": [
+    "10.2.2.22",
+    "10.2.2.1"
+   ]
+  },
+  "ospf": {
+   "process_id": 1,
+   "area": 0,
+   "router_ids": {
+    "R1": "1.1.1.1",
+    "R2": "2.2.2.2"
+   }
+  },
+  "must_not_have_network": "192.168.192.0/24"
+ },
+ {
+  "file": "04-crossed-out-corrections.png",
+  "why": "crossed-out values replaced by red handwriting",
+  "interfaces": {
+   "R1": {
+    "10.40.0.0/24": "10.40.0.1",
+    "10.44.0.0/30": "10.44.0.1"
+   },
+   "R2": {
+    "10.44.0.0/30": "10.44.0.2",
+    "10.48.0.0/24": "10.48.0.254"
+   }
+  },
+  "hosts": {
+   "PC1": [
+    "10.40.0.10",
+    "10.40.0.1"
+   ],
+   "PC2": [
+    "10.48.0.100",
+    "10.48.0.254"
+   ]
+  },
+  "ospf": {
+   "process_id": 4,
+   "area": 0,
+   "router_ids": {
+    "R1": "4.4.4.4",
+    "R2": "4.4.4.2"
+   }
+  }
+ },
+ {
+  "file": "05-UNCLEAR-missing-values.png",
+  "unclear": true,
+  "why": "R2's link IP is '.?' on a /29 (6 possible answers); process ID and router IDs not given",
+  "should_flag": [
+   "R2 link IP",
+   "OSPF process ID / router IDs"
+  ]
+ },
+ {
+  "file": "06-UNCLEAR-conflicts.png",
+  "unclear": true,
+  "why": "10.6.0.6 is outside 10.6.0.0/30; PC2's gateway .254 is not the router's .1",
+  "should_flag": [
+   "R2 link IP outside the /30",
+   "PC2 gateway does not match R2"
+  ]
+ },
+ {
+  "file": "07-bad-photo.jpg",
+  "why": "tilted, blurry, small, heavy JPEG, grey paper",
+  "interfaces": {
+   "R1": {
+    "10.70.1.0/24": "10.70.1.1",
+    "10.70.0.0/30": "10.70.0.1"
+   },
+   "R2": {
+    "10.70.0.0/30": "10.70.0.2",
+    "10.70.2.0/24": "10.70.2.1"
+   }
+  },
+  "hosts": {
+   "PC1": [
+    "10.70.1.10",
+    "10.70.1.1"
+   ],
+   "PC2": [
+    "10.70.2.10",
+    "10.70.2.1"
+   ]
+  },
+  "ospf": {
+   "process_id": 70,
+   "area": 0,
+   "router_ids": {
+    "R1": "7.0.0.1",
+    "R2": "7.0.0.2"
+   }
+  }
+ },
+ {
+  "file": "08-three-routers.png",
+  "why": "3 routers in a loop, angled labels (AI-only: lab has 2 routers)",
+  "interfaces": {
+   "R1": {
+    "10.81.0.0/24": "10.81.0.1",
+    "10.80.12.0/30": "10.80.12.1",
+    "10.80.13.0/30": "10.80.13.1"
+   },
+   "R2": {
+    "10.82.0.0/24": "10.82.0.1",
+    "10.80.12.0/30": "10.80.12.2",
+    "10.80.23.0/30": "10.80.23.1"
+   },
+   "R3": {
+    "10.80.13.0/30": "10.80.13.2",
+    "10.80.23.0/30": "10.80.23.2"
+   }
+  },
+  "hosts": {
+   "PC1": [
+    "10.81.0.10",
+    "10.81.0.1"
+   ],
+   "PC2": [
+    "10.82.0.10",
+    "10.82.0.1"
+   ]
+  },
+  "ospf": {
+   "process_id": 8,
+   "area": 0,
+   "router_ids": {
+    "R1": "8.8.8.1",
+    "R2": "8.8.8.2",
+    "R3": "8.8.8.3"
+   }
+  }
+ }
+]

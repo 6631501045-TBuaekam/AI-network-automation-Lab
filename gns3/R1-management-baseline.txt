@@ -1,5 +1,5 @@
-! R1 - management access only (Cisco 7200 in GNS3). This is the instructor's part.
-! Paste once into the R1 console when you build the lab.
+! R1 - management access only (Cisco 7200 in GNS3). One-time setup.
+! Paste once into the R1 console when building the lab.
 ! It does NOT set up Fa0/0, Fa1/0 or OSPF - the system does that.
 ! First replace:
 !   <ROUTER_PASSWORD>  with ROUTER_SSH_PASSWORD from .env

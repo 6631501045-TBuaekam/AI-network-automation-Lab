@@ -9,7 +9,7 @@ from app.topology import build_model
 from app.validator import validate
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TOPO = json.load(open(os.path.join(ROOT, "backend", "fixtures", "mock_ai_response.json")))
+TOPO = json.load(open(os.path.join(ROOT, "tests", "fixtures", "topology.json")))
 INV = {"R1": {"id": "R1", "host": "192.168.100.11", "port": 22, "interface_hints": {}},
        "R2": {"id": "R2", "host": "192.168.100.12", "port": 22, "interface_hints": {}}}
 

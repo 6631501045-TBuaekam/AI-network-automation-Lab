@@ -1,4 +1,4 @@
-! R2 - management access only (Cisco 7200 in GNS3). This is the instructor's part.
+! R2 - management access only (Cisco 7200 in GNS3). One-time setup.
 ! Paste once into the R2 console. First replace:
 !   <ROUTER_PASSWORD>  with ROUTER_SSH_PASSWORD from .env
 !   <R2_MGMT_IP>      with R2's management IP (e.g. 192.168.x.12)

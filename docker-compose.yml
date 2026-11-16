@@ -1,8 +1,9 @@
-# AI Network Automation System - run on the Ubuntu Server VM:
-#   cp .env.example .env && nano .env                      # set tokens, API key, router SSH creds
+# AI Network Automation System - runs on Docker Desktop (GNS3 PC) or an Ubuntu VM:
+#   cp .env.example .env                                     # set Gemini key, tokens, router password
 #   cp inventory/devices.example.yaml inventory/devices.yaml  # set R1/R2 management IPs
 #   docker compose up -d --build
-# Web UI: http://<ubuntu-ip>:8000     Kafka UI: http://<ubuntu-ip>:8080
+# Web page: http://<docker-host-ip>:8000     Kafka UI: http://<docker-host-ip>:8080
+# Every ${NAME:-value} below is a default - set NAME in .env only to change it (see README).
 name: ai-netauto
 
 services:
@@ -67,11 +68,11 @@ services:
         condition: service_completed_successfully
     environment:
       # only what the backend needs - it never receives router credentials
-      AI_PROVIDER: ${AI_PROVIDER:-anthropic}
+      AI_PROVIDER: ${AI_PROVIDER:-openai}
       AI_MODEL: ${AI_MODEL:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai}
       LOCAL_AI_BASE_URL: ${LOCAL_AI_BASE_URL:-http://host.docker.internal:11434/v1}
       LOCAL_AI_API_KEY: ${LOCAL_AI_API_KEY:-}
       AI_JSON_MODE: ${AI_JSON_MODE:-true}
@@ -85,6 +86,7 @@ services:
       GNS3_USERNAME: ${GNS3_USERNAME:-}
       GNS3_PASSWORD: ${GNS3_PASSWORD:-}
       GNS3_API: ${GNS3_API:-auto}
+      GNS3_TIMEOUT: ${GNS3_TIMEOUT:-5}
       ADMIN_TOKEN: ${ADMIN_TOKEN:?set ADMIN_TOKEN in .env}
       WORKER_TOKEN: ${WORKER_TOKEN:?set WORKER_TOKEN in .env}
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
