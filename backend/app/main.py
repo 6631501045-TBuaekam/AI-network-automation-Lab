@@ -95,10 +95,19 @@ def _inventory() -> dict:
 
 
 def latest_discoveries() -> dict:
+    """The newest successful discovery per router - but only if nothing was deployed to that
+    router after it. A deploy changes the OSPF processes and ports, so an older discovery
+    would make the next plan's clean-up miss what that deploy added. Jobs for one router run
+    in order (same Kafka partition), so "created after the last deploy" means "read after it"."""
+    last_deploy = {r["device_id"]: r["created_at"] for r in db.query(
+        "SELECT device_id, MAX(created_at) AS created_at FROM jobs WHERE job_type='deploy' "
+        "GROUP BY device_id")}
     rows = db.query("SELECT * FROM jobs WHERE job_type='discover' AND status='SUCCESS' "
                     "ORDER BY finished_at DESC")
     out: dict = {}
     for r in rows:
+        if r["created_at"] < (last_deploy.get(r["device_id"]) or 0):
+            continue
         if r["device_id"] not in out and isinstance(r.get("result"), dict):
             d = dict(r["result"])
             d["_finished_at"] = r["finished_at"]

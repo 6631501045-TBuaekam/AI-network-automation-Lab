@@ -198,6 +198,41 @@ def test_second_run_replaces_previous_config(env):
     assert "GigabitEthernet0/3" not in r1.defaulted
 
 
+def _deploy_new_plan(env, change):
+    """Upload, generate (with a topology edit), confirm, approve and deploy one plan."""
+    h = env["http"]
+    pos = len(env["mem"].messages)
+    with open(os.path.join(ROOT, "samples", "exam-topology.png"), "rb") as fh:
+        pid = h.post("/api/diagrams", files={"file": ("topo.png", fh, "image/png")}).json()["id"]
+    plan = h.post(f"/api/plans/{pid}/generate").json()
+    h.put(f"/api/plans/{pid}/topology", headers=ADMIN, json={"topology": change(plan["topology"])})
+    drain(env, pos)
+    plan = h.post(f"/api/plans/{pid}/review").json()
+    plan = h.put(f"/api/plans/{pid}/interface-map", headers=ADMIN,
+                 json={"interface_map": plan["interface_map"], "confirmed": True}).json()
+    assert plan["status"] == "REVIEWED", plan["validation"]["errors"]
+    h.post(f"/api/plans/{pid}/approve", headers=ADMIN, json={"approver": "Lab Admin", "confirm": True})
+    pos = len(env["mem"].messages)
+    dep = h.post(f"/api/plans/{pid}/deploy", headers=ADMIN).json()
+    drain(env, pos)
+    return plan, h.get(f"/api/deployments/{dep['id']}").json()
+
+
+def test_next_plan_removes_ospf_process_of_previous_deploy(env):
+    """The router list read before a deploy must not be reused after it: the next plan
+    would not know the OSPF process that deploy added, and would leave it running."""
+    def process_7(topo):
+        topo["routing"]["process_id"] = 7
+        return topo
+    _, dep = _deploy_new_plan(env, process_7)
+    assert dep["status"] == "SUCCESS"
+    assert env["lab"].routers["R1"].ospf["pid"] == 7
+    plan, dep = _deploy_new_plan(env, lambda topo: topo)  # back to process 1, right away
+    lines = plan["configs"]["R1"]["lines"]
+    assert {"no router ospf 1", "no router ospf 7"} <= set(lines[:lines.index("hostname R1")])
+    assert dep["status"] == "SUCCESS"
+
+
 def test_generate_uses_requirements_pasted_after_upload(env):
     h = env["http"]
     with open(os.path.join(ROOT, "samples", "exam-topology.png"), "rb") as fh:
