@@ -11,7 +11,8 @@ from app.config import reload_settings
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FIXTURE = open(os.path.join(ROOT, "tests", "fixtures", "topology.json"), encoding="utf-8").read()
 AI_VARS = ("AI_PROVIDER", "AI_MODEL", "OPENAI_API_KEY", "OPENAI_BASE_URL", "LOCAL_AI_BASE_URL",
-           "LOCAL_AI_API_KEY", "AI_JSON_MODE", "LOCAL_AI_TIMEOUT")
+           "LOCAL_AI_API_KEY", "AI_JSON_MODE", "LOCAL_AI_TIMEOUT", "OCR_API_KEY", "OCR_BASE_URL",
+           "OCR_MODEL")
 
 
 @pytest.fixture
@@ -137,3 +138,43 @@ def test_interface_name_ambiguities_are_dropped(monkeypatch):
     finally:
         monkeypatch.setenv("AI_PROVIDER", "test")
         reload_settings()
+
+
+def test_ocr_text_is_given_to_the_ai(capture, monkeypatch):
+    out = _run(monkeypatch, AI_PROVIDER="openai", OPENAI_API_KEY="k1", OCR_API_KEY="ocr-key")
+    ocr, main = capture
+    assert ocr["url"] == "https://api.opentyphoon.ai/v1/chat/completions"
+    assert ocr["body"]["model"] == "typhoon-ocr-v2"
+    assert ocr["headers"]["Authorization"] == "Bearer ocr-key"
+    prompt = main["body"]["messages"][1]["content"][0]["text"]
+    assert "Text read from the picture by an OCR tool" in prompt and FIXTURE.strip()[:40] in prompt
+    assert out["ocr_text"]
+
+
+def test_ocr_is_off_without_a_key(capture, monkeypatch):
+    out = _run(monkeypatch, AI_PROVIDER="openai", OPENAI_API_KEY="k1")
+    assert len(capture) == 1 and out["ocr_text"] is None
+    assert "OCR" not in capture[0]["body"]["messages"][1]["content"][0]["text"]
+
+
+def test_ocr_failure_only_warns(capture, monkeypatch):
+    real_post = ai.httpx.post
+
+    def post(url, **kw):
+        if "opentyphoon" in url:
+            raise httpx.ConnectError("down")
+        return real_post(url, **kw)
+
+    monkeypatch.setattr(ai.httpx, "post", post)
+    out = _run(monkeypatch, AI_PROVIDER="openai", OPENAI_API_KEY="k1", OCR_API_KEY="ocr-key")
+    note = out["topology"]["ambiguities"][-1]
+    assert note["item"] == "OCR" and note["severity"] == "warning"
+
+
+def test_network_missing_from_ocr_text_is_flagged():
+    topo = {"networks": [{"cidr": "172.20.30.0/27"}, {"cidr": "10.255.0.0/30"}]}
+    issues = ai._ocr_mismatches(topo, "PC1 172.20.5.0/27 .1 R1 10.255.0.0/30 .2 R2")
+    assert [i["item"] for i in issues] == ["network 172.20.30.0/27"]
+    assert issues[0]["severity"] == "warning"
+    # pictures that write masks instead of /nn give nothing to compare against
+    assert ai._ocr_mismatches(topo, "192.168.50.66 255.255.255.192") == []

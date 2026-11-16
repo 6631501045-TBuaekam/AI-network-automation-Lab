@@ -28,7 +28,7 @@ SSH, applies the config and checks that OSPF works.
 | `docs/REPORT.md` | Short report and test results |
 | `evidence/` | Screenshots from the live test |
 | `samples/` | Sample diagrams with their requirements as text, plus harder test pictures in `samples/hard-tests/` |
-| `tests/` | 52 automated tests |
+| `tests/` | 56 automated tests |
 
 ## 1. Build the lab
 Follow [docs/LAB_SETUP.md](docs/LAB_SETUP.md).
@@ -65,6 +65,7 @@ Everything else works without changes. Add a line to `.env` only to change one:
 | `GNS3_ENABLED`, `GNS3_URL`, login | off | GNS3 cable check - see section 6 |
 | `GNS3_API` | `auto` | Set `v3` (GNS3 3.x) or `v2` (GNS3 2.2) if detection fails |
 | `GNS3_TIMEOUT` | `5` | Seconds to wait for the GNS3 server |
+| `OCR_BASE_URL`, `OCR_MODEL` | Typhoon, `typhoon-ocr-v2` | Another OCR service with an OpenAI-style API is used |
 
 ## 3. Start
 ```bash
@@ -106,6 +107,7 @@ The AI must be able to read pictures. Change it in `.env`, then run
 |---|---|
 | Google Gemini (default) | `OPENAI_API_KEY=...` is enough. The default is `AI_PROVIDER=openai`, the Gemini address and `AI_MODEL=gemini-4-hydrogen` |
 | Claude | `AI_PROVIDER=anthropic`, `ANTHROPIC_API_KEY=...` (needs paid API credits). Model: `claude-sonnet-5-5` |
+| DeepSeek | `OPENAI_API_KEY=...`, `OPENAI_BASE_URL=https://api.deepseek.com/v1`, `AI_MODEL=deepseek-flash` (`deepseek-v4-pro` can't read pictures). Best with the OCR check on |
 | OpenAI | `AI_PROVIDER=openai`, `OPENAI_API_KEY=...`, `OPENAI_BASE_URL=https://api.openai.com/v1`, `AI_MODEL=gpt-4o` |
 | Groq / OpenRouter / GitHub Models | Like OpenAI, with `OPENAI_BASE_URL` = `https://api.groq.com/openai/v1`, `https://openrouter.ai/api/v1` or `https://models.github.ai/inference`, and that service's `AI_MODEL` |
 | Local, free (Ollama) | Install Ollama, run `ollama pull qwen2.5vl:7b`, set `AI_PROVIDER=local`. Model: `qwen2.5vl:7b` |
@@ -115,6 +117,13 @@ Leave `AI_MODEL` empty to use the model shown for each AI.
 **Tip:** always paste the requirements text with the picture. In testing, the local model
 got everything right that way, but missed R2's link address from the picture alone (the
 checks caught it, so nothing was deployed).
+
+**OCR double-check (optional, free):** set `OCR_API_KEY` to a key from Typhoon
+(opentyphoon.ai). Typhoon OCR reads the text in the picture first, and the AI gets that
+text with the picture, so it copies the numbers instead of guessing them. If the AI's
+network is not in the OCR text, a warning tells you to check it. If OCR is down, the AI
+still runs. In testing, DeepSeek Flash went from 4 to 6 of 6 clear hard tests right
+with OCR on.
 
 Ollama on Linux must accept outside connections: `sudo systemctl edit ollama` → add
 `Environment="OLLAMA_HOST=0.0.0.0"` under `[Service]` → `sudo systemctl restart ollama`.
@@ -153,6 +162,6 @@ router doesn't lock the account.
 ## 8. Tests
 ```bash
 pip install -r backend/requirements.txt -r worker/requirements.txt pytest
-python -m pytest -q tests/     # 52 passed
+python -m pytest -q tests/     # 56 passed
 ```
 The tests include a full run against fake routers over real SSH.

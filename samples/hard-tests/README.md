@@ -24,7 +24,11 @@ Paint-style diagrams for testing the AI. Each one is uploaded **without** requir
 | 05, 06 | Stopped correctly |
 | 08 | 17/17 correct |
 
-Gemini read more accurately (6/6 clear pictures fully correct vs 4/6 for DeepSeek).
+With the OCR check on (`OCR_API_KEY`, Typhoon OCR), DeepSeek Flash got every clear
+picture right: 01 12/12, 02 12/12, 04 12/12, 07 12/12, 08 17/17, 03 14/15 (blocked by
+Review). 05 and 06 stopped correctly.
+
+Without OCR, Gemini read more accurately (6/6 clear pictures fully correct vs 4/6 for DeepSeek).
 DeepSeek was faster (14-39 s per picture). `deepseek-v4-pro` can't read pictures.
 
 "Correct" counts every router IP, PC IP and gateway, OSPF process, area and router ID.

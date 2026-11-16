@@ -78,6 +78,9 @@ services:
       AI_JSON_MODE: ${AI_JSON_MODE:-true}
       AI_TIMEOUT: ${AI_TIMEOUT:-120}
       LOCAL_AI_TIMEOUT: ${LOCAL_AI_TIMEOUT:-600}
+      OCR_API_KEY: ${OCR_API_KEY:-}
+      OCR_BASE_URL: ${OCR_BASE_URL:-https://api.opentyphoon.ai/v1}
+      OCR_MODEL: ${OCR_MODEL:-typhoon-ocr-v2}
       # optional read-only GNS3 lab cross-check (GET requests only)
       GNS3_ENABLED: ${GNS3_ENABLED:-false}
       GNS3_URL: ${GNS3_URL:-}

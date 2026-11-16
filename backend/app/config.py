@@ -40,6 +40,13 @@ class Settings:
         self.ai_timeout = float(_env("AI_TIMEOUT", "120"))
         self.local_ai_timeout = float(_env("LOCAL_AI_TIMEOUT", "600"))  # CPU inference is slow
 
+        # OCR double-check (optional): reads the text in the picture and gives it to the AI.
+        # Off when OCR_API_KEY is empty. Default: Typhoon OCR (free, OpenAI-style API).
+        self.ocr_api_key = _env("OCR_API_KEY")
+        self.ocr_base_url = _env("OCR_BASE_URL", "https://api.opentyphoon.ai/v1")
+        self.ocr_model = _env("OCR_MODEL", "typhoon-ocr-v2")
+        self.ocr_timeout = float(_env("OCR_TIMEOUT", "60"))
+
         # GNS3 lab cross-check (read-only, optional). Suggests the interface mapping from the
         # real cabling; SSH discovery and the admin's confirmation still decide.
         self.gns3_enabled = _bool("GNS3_ENABLED", False)
