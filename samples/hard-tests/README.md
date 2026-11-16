@@ -14,5 +14,18 @@ Paint-style diagrams for testing the AI. Each one is uploaded **without** requir
 | `07-bad-photo.jpg` | Tilted, blurry, small, low-quality JPEG, grey paper | 12/12 correct |
 | `08-three-routers.png` | Three routers in a triangle, tilted labels | 17/17 correct. Can't be deployed: the lab has only R1 and R2 |
 
+## DeepSeek (`deepseek-flash`, 2026-11-16)
+
+| Picture | Result |
+|---|---|
+| 01 | 6/12 - read `172.20.5` as `172.20.30` and `172.20.9` as `172.20.90`. The values agree with each other, so the automatic checks can't catch it. Only a person reading the config would |
+| 02, 04, 07 | 12/12 correct |
+| 03 | 13/15 - missed PC3's IP (flagged it as missing) and added the management network. Review blocked it |
+| 05, 06 | Stopped correctly |
+| 08 | 17/17 correct |
+
+Gemini read more accurately (6/6 clear pictures fully correct vs 4/6 for DeepSeek).
+DeepSeek was faster (14-39 s per picture). `deepseek-v4-pro` can't read pictures.
+
 "Correct" counts every router IP, PC IP and gateway, OSPF process, area and router ID.
 Every test stopped before approval. Nothing wrong could reach the routers.
