@@ -8,6 +8,7 @@ import base64
 import ipaddress
 import json
 import re
+import time
 
 import httpx
 
@@ -45,6 +46,11 @@ Rules:
 - Use the device names written in the diagram. If a router shows both an icon label (R1) and a
   caption (router1), use the short one as "id" and the other as "label".
 - Every link between two devices must reference the network written on that link.
+- Hand corrections: a value with a line or an X drawn THROUGH it is the old, cancelled value.
+  A value written next to or above it that is NOT struck through (often in another colour)
+  is its replacement - use the replacement. The X belongs to the value under it, not to the
+  value written beside it. Add a "warning" naming the correction (old -> new). Only if every
+  candidate value is struck through is the value missing ("blocking").
 - routing: fill protocol/process_id/area/router_ids ONLY from what the image or the written
   requirements state. If a value is not stated, set it to null and add an ambiguity.
 - NEVER guess. Anything unreadable, missing, contradictory or inferred goes into "ambiguities"
@@ -198,13 +204,16 @@ def read_text(image: bytes, media_type: str) -> str | None:
                 {"type": "text", "text": "Read all text in this image exactly as written."},
                 {"type": "image_url", "image_url": {"url": data_url}}]}]}
     url = settings.ocr_base_url.rstrip("/") + "/chat/completions"
-    try:
-        r = httpx.post(url, json=body, timeout=settings.ocr_timeout,
-                       headers={"Authorization": f"Bearer {settings.ocr_api_key}"})
-        r.raise_for_status()
-        return r.json()["choices"][0]["message"]["content"] or ""
-    except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError) as exc:
-        raise AIError(f"OCR failed: {exc}") from exc
+    for attempt in (1, 2):  # one retry: a short network blip should not skip the OCR check
+        try:
+            r = httpx.post(url, json=body, timeout=settings.ocr_timeout,
+                           headers={"Authorization": f"Bearer {settings.ocr_api_key}"})
+            r.raise_for_status()
+            return r.json()["choices"][0]["message"]["content"] or ""
+        except (httpx.HTTPError, ValueError, KeyError, IndexError, TypeError) as exc:
+            if attempt == 2:
+                raise AIError(f"OCR failed: {exc}") from exc
+            time.sleep(2)
 
 
 _CIDR = re.compile(r"\b\d{1,3}(?:\.\d{1,3}){3}/\d{1,2}\b")
