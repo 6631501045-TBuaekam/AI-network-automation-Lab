@@ -18,12 +18,14 @@ TOPOLOGY_SCHEMA_HINT = {
     "devices": [{"id": "R1", "label": "router1", "type": "router | host | switch", "notes": None}],
     "networks": [{"cidr": "10.0.0.0/24", "description": "R1 LAN (PC1)"}],
     "interfaces": [{"device": "R1", "network": "10.0.0.0/24", "ip": "10.0.0.1",
-                    "prefix_length": 24, "peer": "PC1"}],
-    "hosts": [{"id": "PC1", "ip": "10.0.0.10", "prefix_length": 24, "gateway": "10.0.0.1"}],
+                    "prefix_length": 24, "peer": "PC1", "source": "written | inferred"}],
+    "hosts": [{"id": "PC1", "ip": "10.0.0.10", "prefix_length": 24, "gateway": "10.0.0.1",
+               "ip_source": "written | inferred", "gateway_source": "written | inferred"}],
     "links": [{"endpoints": ["PC1", "R1"], "network": "10.0.0.0/24"}],
     "routing": {"protocol": "OSPFv2", "process_id": 1, "area": 0,
                 "router_ids": {"R1": "1.1.1.1"},
                 "passive_lan_interfaces": True, "static_routes_allowed": False},
+    "corrections": [{"item": "R2 LAN address", "old": ".1", "new": "10.0.0.254"}],
     "ambiguities": [{"item": "R2 router-id", "issue": "not shown in the diagram",
                      "severity": "blocking | warning"}],
 }
@@ -32,7 +34,7 @@ SYSTEM_PROMPT = f"""You are a senior network engineer extracting a topology and 
 from a network diagram image (and optional written requirements) for an automation system.
 
 Return ONLY one JSON object (no markdown, no prose) with exactly these top-level keys:
-devices, networks, interfaces, hosts, links, routing, ambiguities.
+devices, networks, interfaces, hosts, links, routing, corrections, ambiguities.
 Example shape (values are illustrative, NOT the answer):
 {json.dumps(TOPOLOGY_SCHEMA_HINT, indent=1)}
 
@@ -46,11 +48,24 @@ Rules:
 - Use the device names written in the diagram. If a router shows both an icon label (R1) and a
   caption (router1), use the short one as "id" and the other as "label".
 - Every link between two devices must reference the network written on that link.
+- "source" / "ip_source" / "gateway_source": "written" when that device's value (or its host
+  part, e.g. ".1" next to the device, combined with the network on the link) is written in the
+  picture or the requirements; "inferred" when it is not written for that device and you
+  derived it (by elimination, from a rule like "gateways = router LAN IP", or by convention).
+  Be honest: an inferred value is never "written". Never invent an address for a value that is
+  missing, unreadable or scribbled over: set it to null and add a "blocking" ambiguity.
 - Hand corrections: a value with a line or an X drawn THROUGH it is the old, cancelled value.
-  A value written next to or above it that is NOT struck through (often in another colour)
-  is its replacement - use the replacement. The X belongs to the value under it, not to the
-  value written beside it. Add a "warning" naming the correction (old -> new). Only if every
-  candidate value is struck through is the value missing ("blocking").
+  A value written next to, above, below or at the end of an arrow from it, that is NOT struck
+  through (often in another colour), is its replacement - use the replacement. The X belongs to
+  the value it covers, not to the value written beside it. In a chain (a struck, b struck, c)
+  the last un-struck value wins. List every correction in "corrections" (item, old, new);
+  do not repeat it in "ambiguities". If every candidate is struck through, the value is
+  missing: null + "blocking".
+- A correction only replaces the value it is drawn on. If another written value still uses
+  the old one (e.g. a PC gateway written as the router's old address), the picture
+  contradicts itself: do NOT pick one side - add a "blocking" ambiguity naming both values.
+- Management networks (labelled mgmt/management, dashed cables, "not part of OSPF") are not
+  part of the plan: leave them out of networks, interfaces and links.
 - routing: fill protocol/process_id/area/router_ids ONLY from what the image or the written
   requirements state. If a value is not stated, set it to null and add an ambiguity.
 - NEVER guess. Anything unreadable, missing, contradictory or inferred goes into "ambiguities"
@@ -246,6 +261,39 @@ def _ocr_mismatches(topology: dict, ocr_text: str) -> list:
     return issues
 
 
+def _source_checks(topology: dict) -> list:
+    """Turn what the AI says about where each value came from into ambiguities, so the rules
+    don't depend on the AI also remembering to write an ambiguity:
+    * a router or PC address that is not written in the picture (inferred) blocks the plan;
+    * an inferred PC gateway is a warning (normal: "gateway = router LAN IP");
+    * every hand correction becomes a warning that names the old and the new value."""
+    out = []
+    for i in topology.get("interfaces") or []:
+        if isinstance(i, dict) and str(i.get("source", "")).lower() == "inferred" and i.get("ip"):
+            out.append({"item": f"{i.get('device')} address on {i.get('network')}",
+                        "issue": f"{i['ip']} is not written in the picture (the AI inferred it). "
+                                 "Check it, then fix it with Edit JSON", "severity": "blocking"})
+    for h in topology.get("hosts") or []:
+        if not isinstance(h, dict):
+            continue
+        name = h.get("id") or h.get("name")
+        if str(h.get("ip_source", "")).lower() == "inferred" and h.get("ip"):
+            out.append({"item": f"{name} address", "issue": f"{h['ip']} is not written in the picture "
+                        "(the AI inferred it). Check it, then fix it with Edit JSON", "severity": "blocking"})
+        already = any(name and name in f"{a.get('item')} {a.get('issue')}" and "gateway" in
+                      f"{a.get('item')} {a.get('issue')}".lower()
+                      for a in topology.get("ambiguities") or [] if isinstance(a, dict))
+        if str(h.get("gateway_source", "")).lower() == "inferred" and h.get("gateway") and not already:
+            out.append({"item": f"{name} gateway", "issue": f"{h['gateway']} inferred from the router "
+                        "address on the same LAN", "severity": "warning"})
+    for c in topology.get("corrections") or []:
+        if isinstance(c, dict):
+            out.append({"item": f"hand correction: {c.get('item')}",
+                        "issue": f"{c.get('old')} is crossed out, replaced by {c.get('new')}. "
+                                 "Check the picture", "severity": "warning"})
+    return out
+
+
 def analyze_diagram(image: bytes, media_type: str, requirements: str | None = None) -> dict:
     provider = settings.ai_provider
     if provider not in PROVIDERS:
@@ -259,10 +307,11 @@ def analyze_diagram(image: bytes, media_type: str, requirements: str | None = No
     extra = {"ocr_text": ocr_text} if ocr_text else {}
     raw, model = PROVIDERS[provider](image, media_type, requirements, **extra)
     topology = _extract_json(raw)
-    for key in ("devices", "networks", "interfaces", "hosts", "links", "ambiguities"):
+    for key in ("devices", "networks", "interfaces", "hosts", "links", "corrections", "ambiguities"):
         topology.setdefault(key, [])
     topology.setdefault("routing", {})
     topology["ambiguities"] = _drop_interface_name_ambiguities(topology["ambiguities"] or [])
+    topology["ambiguities"] += _source_checks(topology)
     if ocr_text:
         topology["ambiguities"] += _ocr_mismatches(topology, ocr_text)
     if ocr_note:

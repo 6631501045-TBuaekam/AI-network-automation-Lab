@@ -181,3 +181,23 @@ def test_network_missing_from_ocr_text_is_flagged():
     assert ai._ocr_mismatches(exam, "PC1 10.0.0.10/24 R1 10.0.0.1/24 10.1.0.1/24 R2 10.1.0.2/24") == []
     # pictures that write masks instead of /nn give nothing to compare against
     assert ai._ocr_mismatches(topo, "192.168.50.66 255.255.255.192") == []
+
+
+def test_inferred_addresses_block_and_corrections_warn():
+    topo = {"interfaces": [{"device": "R1", "network": "10.0.0.0/30", "ip": "10.0.0.1", "source": "inferred"},
+                           {"device": "R2", "network": "10.0.0.0/30", "ip": "10.0.0.2", "source": "written"}],
+            "hosts": [{"id": "PC1", "ip": "10.1.0.10", "gateway": "10.1.0.1",
+                       "ip_source": "written", "gateway_source": "inferred"},
+                      {"id": "PC2", "ip": "10.2.0.10", "gateway": "10.2.0.1", "ip_source": "inferred"}],
+            "corrections": [{"item": "R2 LAN address", "old": ".1", "new": "10.2.0.254"}]}
+    out = {a["item"]: a for a in ai._source_checks(topo)}
+    assert out["R1 address on 10.0.0.0/30"]["severity"] == "blocking"
+    assert out["PC2 address"]["severity"] == "blocking"
+    assert out["PC1 gateway"]["severity"] == "warning"
+    fix = out["hand correction: R2 LAN address"]
+    assert fix["severity"] == "warning" and ".1" in fix["issue"] and "10.2.0.254" in fix["issue"]
+    assert "R2 address on 10.0.0.0/30" not in out  # written values raise nothing
+    assert ai._source_checks({}) == []
+    # the AI already warned about PC1's gateway: no second warning
+    topo["ambiguities"] = [{"item": "PC1 default gateway", "issue": "inferred", "severity": "warning"}]
+    assert "PC1 gateway" not in {a["item"] for a in ai._source_checks(topo)}
