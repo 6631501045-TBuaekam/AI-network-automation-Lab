@@ -14,6 +14,9 @@ SSH, applies the config and checks that OSPF works.
            Worker ──SSH──► R1 ── OSPF ── R2        PC1 → ping PC2 ✓
 ```
 
+**Report:** [docs/REPORT.md](docs/REPORT.md) - the architecture, how a run works, how each
+of the 10 lab tasks is met, and the live test results with their evidence (`evidence/`).
+
 ## What is in this project
 
 | Folder / file | What it is |
