@@ -1,0 +1,134 @@
+{
+  "plan": "plan-8bd50ebfce62",
+  "ai_model": "deepseek-flash",
+  "topology": {
+    "devices": [
+      {
+        "id": "PC1",
+        "label": "PC1",
+        "type": "host",
+        "notes": null
+      },
+      {
+        "id": "R1",
+        "label": "router1",
+        "type": "router",
+        "notes": null
+      },
+      {
+        "id": "R2",
+        "label": "router2",
+        "type": "router",
+        "notes": null
+      },
+      {
+        "id": "PC2",
+        "label": "PC2",
+        "type": "host",
+        "notes": null
+      }
+    ],
+    "networks": [
+      {
+        "cidr": "10.0.0.0/24",
+        "description": "R1 LAN (PC1)"
+      },
+      {
+        "cidr": "10.1.0.0/24",
+        "description": "R1-R2 link"
+      },
+      {
+        "cidr": "10.2.0.0/24",
+        "description": "R2 LAN (PC2)"
+      }
+    ],
+    "interfaces": [
+      {
+        "device": "R1",
+        "network": "10.0.0.0/24",
+        "ip": "10.0.0.1",
+        "prefix_length": 24,
+        "peer": "PC1",
+        "source": "written"
+      },
+      {
+        "device": "R1",
+        "network": "10.1.0.0/24",
+        "ip": "10.1.0.1",
+        "prefix_length": 24,
+        "peer": "R2",
+        "source": "written"
+      },
+      {
+        "device": "R2",
+        "network": "10.1.0.0/24",
+        "ip": "10.1.0.2",
+        "prefix_length": 24,
+        "peer": "R1",
+        "source": "written"
+      },
+      {
+        "device": "R2",
+        "network": "10.2.0.0/24",
+        "ip": "10.2.0.2",
+        "prefix_length": 24,
+        "peer": "PC2",
+        "source": "written"
+      }
+    ],
+    "hosts": [
+      {
+        "id": "PC1",
+        "ip": "10.0.0.10",
+        "prefix_length": 24,
+        "gateway": "10.0.0.1",
+        "ip_source": "written",
+        "gateway_source": "written"
+      },
+      {
+        "id": "PC2",
+        "ip": "10.2.0.10",
+        "prefix_length": 24,
+        "gateway": "10.2.0.2",
+        "ip_source": "written",
+        "gateway_source": "written"
+      }
+    ],
+    "links": [
+      {
+        "endpoints": [
+          "PC1",
+          "R1"
+        ],
+        "network": "10.0.0.0/24"
+      },
+      {
+        "endpoints": [
+          "R1",
+          "R2"
+        ],
+        "network": "10.1.0.0/24"
+      },
+      {
+        "endpoints": [
+          "R2",
+          "PC2"
+        ],
+        "network": "10.2.0.0/24"
+      }
+    ],
+    "routing": {
+      "protocol": "OSPFv2",
+      "process_id": 1,
+      "area": 0,
+      "router_ids": {
+        "R1": "1.1.1.1",
+        "R2": "2.2.2.2"
+      },
+      "passive_lan_interfaces": true,
+      "static_routes_allowed": false
+    },
+    "corrections": [],
+    "ambiguities": []
+  }
+}

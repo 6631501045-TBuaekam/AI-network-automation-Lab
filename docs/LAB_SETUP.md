@@ -17,7 +17,9 @@ system uses it to log in over SSH and never changes it.
 Fa0/0, Fa1/0 and OSPF are **not** set up by hand. The system does that after approval.
 
 ## 1. Requirements
-* GNS3 3.x with the GNS3 VM (VMware). Tested with GNS3 3.1.
+* GNS3 **2.2 or 3.x**, with the GNS3 VM or the local server. Tested with GNS3 3.1.
+  The system logs in to the routers over SSH, so the GNS3 version does not matter for
+  the main workflow (see section 6 for the few 2.x differences).
 * A Cisco router image. Tested with **Cisco 7200** (`c7200-advipservicesk9-mz.124-24.T8`).
   IOSv works too - the system reads the port names from each router.
 * VPCS for the PCs (comes with GNS3).
@@ -70,7 +72,25 @@ Docker must be able to reach both router management IPs.
 
 Then continue with the README: settings, start, and how to use it.
 
-## 5. Practice reset
+## 5. Optional: let Deploy set the PCs
+Add the PCs' consoles to `inventory/devices.yaml` (see the `pcs:` part of
+`inventory/devices.example.yaml`). Deploy then gives PC1 and PC2 each plan's addresses,
+so no typing on the PCs. Find the port in GNS3: right-click the PC → **Show node
+information** → Console port. Leave `pcs:` out to set the PCs by hand (the Deploy box
+shows the commands).
+
+## 6. GNS3 2.x
+
+Everything above works the same in GNS3 2.2. Only these points differ:
+
+| Topic | GNS3 2.2 |
+|---|---|
+| Routers | Any Cisco IOS image with SSH (c7200, IOSv, IOSvL2). Port names are read from each router |
+| Cloud for management | Same idea: a Cloud node on the host-only network card (GNS3 VM) or on the host's adapter (local server) |
+| PC consoles (`pcs:`) | **GNS3 VM**: `console_host` = the VM's IP. **Local server**: the consoles listen on `127.0.0.1` by default, which Docker cannot reach - set the server's console host to `0.0.0.0` (Edit → Preferences → Server) and use `console_host: host.docker.internal` |
+| GNS3 cable check (optional) | Works with both: `GNS3_API=auto` detects the version, or set `GNS3_API=v2`. GNS3 2.2 often needs no login; the local server's address from Docker is `http://host.docker.internal:3080` |
+
+## 7. Practice reset
 To put the routers back to the starting state (management stays on), paste
 `gns3/reset-dataplane.txt` into each router. This is only for practice - clicking
 **Run** again already removes the old config.
