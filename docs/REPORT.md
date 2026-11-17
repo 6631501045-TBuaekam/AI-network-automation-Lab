@@ -91,7 +91,7 @@ R2 is the same with router ID 2.2.2.2 and networks 10.1.0.0/24 and 10.2.0.0/24.
 
 ## 7. Test results
 
-### 7.1 Automated tests - 61 passed
+### 7.1 Automated tests - 62 passed
 | Area | Tests |
 |---|---|
 | Reading router output (incl. refusing a deploy when an old OSPF process is still running) | 10 |
@@ -99,9 +99,9 @@ R2 is the same with router ID 2.2.2.2 and networks 10.1.0.0/24 and 10.2.0.0/24.
 | Full run with fake routers over real SSH (incl. duplicate job, changed config, wrong password, second run, leftover OSPF process) | 6 |
 | AI options (cloud, local, OCR, errors, "never guess" and hand-correction rules) | 14 |
 | GNS3 check | 13 |
-| SSH sessions | 4 |
+| SSH sessions (incl. a late prompt that must not cut off the next command) | 5 |
 | Removing the old plan | 3 |
-| **Total** | **61** |
+| **Total** | **62** |
 
 ### 7.2 Live test in GNS3 (2026-11-14)
 The routers were reset to the starting state (LAN and link ports empty, no OSPF,

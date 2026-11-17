@@ -28,7 +28,7 @@ SSH, applies the config and checks that OSPF works.
 | `docs/REPORT.md` | Short report and test results |
 | `evidence/` | Screenshots from the live test |
 | `samples/demo/` | 8 pictures for a live demo, including the exam diagram (check them with `scripts/test_pictures.py`) |
-| `tests/` | 61 automated tests |
+| `tests/` | 62 automated tests |
 
 ## 1. Build the lab
 Follow [docs/LAB_SETUP.md](docs/LAB_SETUP.md).
@@ -162,6 +162,6 @@ router doesn't lock the account.
 ## 8. Tests
 ```bash
 pip install -r backend/requirements.txt -r worker/requirements.txt pytest
-python -m pytest -q tests/     # 61 passed
+python -m pytest -q tests/     # 62 passed
 ```
 The tests include a full run against fake routers over real SSH.

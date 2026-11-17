@@ -60,3 +60,38 @@ def test_unfilled_inventory_placeholder_is_reported(monkeypatch):
     with pytest.raises(DeviceError, match="management IP not filled in"):
         worker.open_session("R1", {"R1": {"host": "<R1_MGMT_IP>", "port": 22}})
     assert calls["connect"] == 0  # never tries to connect to a placeholder
+
+
+class _Chan:
+    """A fake SSH channel: each send() queues the router's reply in chunks."""
+
+    def __init__(self, pending=None):
+        self.chunks = list(pending or [])
+        self.replies = {}
+        self.closed = False
+
+    def send(self, data):
+        cmd = data.strip()
+        if cmd in self.replies:
+            self.chunks += self.replies[cmd]
+
+    def recv_ready(self):
+        return bool(self.chunks)
+
+    def recv(self, n):
+        return self.chunks.pop(0).encode()
+
+    def exit_status_ready(self):
+        return False
+
+
+def test_stale_prompt_does_not_end_the_next_read_early():
+    """A prompt left over from the previous command arrives first; the read must still wait
+    for the command's own echo and output (a lost 'show ip protocols' hid an OSPF process)."""
+    s = IOSSession("192.0.2.1", 22, "u", "p")
+    s.chan = _Chan(pending=["\r\nR1#"])  # leftover prompt from a newline nudge
+    s.chan.replies["show ip protocols"] = ["show ip protocols\r\n",
+                                           'Routing Protocol is "ospf 10"\r\n  Router ID 10.10.10.1\r\nR1#']
+    out = s.send("show ip protocols", timeout=3)
+    assert 'Routing Protocol is "ospf 10"' in out
+    assert "R1#" not in out and "show ip protocols" not in out

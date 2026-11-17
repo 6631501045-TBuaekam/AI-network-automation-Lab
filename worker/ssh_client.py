@@ -125,7 +125,7 @@ class IOSSession:
         self.transcript.append(buf)
         return buf
 
-    def _read_until_prompt(self, timeout: float) -> str:
+    def _read_until_prompt(self, timeout: float, after: str | None = None) -> str:
         """Read until a CLI prompt ends the buffer. Asynchronous syslog lines
         (e.g. %LINK-3-UPDOWN) can arrive after the prompt, so on silence we send
         a bare newline to re-draw the prompt."""
@@ -135,7 +135,11 @@ class IOSSession:
                 chunk = self.chan.recv(65535).decode("utf-8", "replace")
                 buf += chunk
                 last_rx = time.time()
-                if self._prompt(buf)[0]:
+                # A prompt only ends the read once the router has echoed our command:
+                # a late prompt left over from the previous command (or a newline nudge)
+                # would otherwise end this read early with empty output.
+                seen = buf if after is None else buf[buf.find(after) + len(after):] if after in buf else ""
+                if seen and self._prompt(seen)[0]:
                     time.sleep(0.05)
                     if not self.chan.recv_ready():
                         break
@@ -156,10 +160,13 @@ class IOSSession:
 
     def send(self, command: str, timeout: float | None = None) -> str:
         self.chan.send(command + "\n")
-        raw = self._read_until_prompt(timeout or max(self.timeout, 30))
+        cmd = command.strip()
+        # wait for the echo of the first part of the command (IOS may wrap a long line)
+        raw = self._read_until_prompt(timeout or max(self.timeout, 30), after=cmd[:30] or None)
         lines = raw.replace("\r", "").split("\n")
-        if lines and command.strip() and command.strip() in lines[0]:
-            lines = lines[1:]  # drop echo
+        echo = next((i for i, ln in enumerate(lines) if cmd and cmd[:30] in ln), None)
+        if echo is not None:
+            lines = lines[echo + 1:]  # drop the echo and anything before it (a stale prompt)
         if lines and self._prompt(lines[-1])[0]:
             lines = lines[:-1]  # drop trailing prompt
         return "\n".join(lines).strip("\n")
