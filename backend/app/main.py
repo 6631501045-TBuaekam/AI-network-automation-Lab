@@ -174,7 +174,6 @@ def index():
 @app.get("/api/health")
 def health():
     return {"status": "ok", "ai_provider": settings.ai_provider, "kafka_topic": settings.kafka_topic,
-            "kafka_enabled": settings.kafka_enabled,
             "gns3": ({"project": settings.gns3_project} if settings.gns3_enabled else None),
             "time": time.time()}
 

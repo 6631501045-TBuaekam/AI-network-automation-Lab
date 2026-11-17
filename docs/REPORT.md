@@ -91,19 +91,7 @@ R2 is the same with router ID 2.2.2.2 and networks 10.1.0.0/24 and 10.2.0.0/24.
 
 ## 7. Test results
 
-### 7.1 Automated tests - 62 passed
-| Area | Tests |
-|---|---|
-| Reading router output (incl. refusing a deploy when an old OSPF process is still running) | 10 |
-| Planning and checks (incl. a 3-router network and missing OSPF values) | 11 |
-| Full run with fake routers over real SSH (incl. duplicate job, changed config, wrong password, second run, leftover OSPF process) | 6 |
-| AI options (cloud, local, OCR, errors, "never guess" and hand-correction rules) | 14 |
-| GNS3 check | 13 |
-| SSH sessions (incl. a late prompt that must not cut off the next command) | 5 |
-| Removing the old plan | 3 |
-| **Total** | **62** |
-
-### 7.2 Live test in GNS3 (2026-11-14)
+### 7.1 Live test in GNS3 (2026-11-14)
 The routers were reset to the starting state (LAN and link ports empty, no OSPF,
 management on). Everything was done **through the web page**: upload → AI (38 s, nothing
 unclear) → read port names → Review (all checks passed) → confirm ports → Approve →
@@ -128,14 +116,14 @@ run's config. Both finished with all jobs SUCCESS, and the second config started
 lines that remove the old plan (evidence/10-run2-review-cleanup.png,
 evidence/11-run2-jobs.png). The ping still worked afterwards.
 
-### 7.3 Problems found and fixed
+### 7.2 Problems found and fixed
 * **SSH sessions left open.** Each job left one SSH session open, so the router ran out
-  and refused R1's verify. Fixed in `worker/ssh_client.py`, with a test.
+  and refused R1's verify. Fixed in `worker/ssh_client.py`.
 * **Small AIs asking for port names.** Port names come from the routers, so this note is
   now ignored instead of blocking approval.
 * **Local AI misreading an address.** From the picture alone, Qwen2.5-VL 7B sometimes
-  misread one address (the checks caught it). With the requirements text added, every
-  test was correct.
+  misread one address (the checks caught it). With the requirements text added, it was
+  always correct.
 
 ## 8. Conclusion
 The whole chain works: Upload → AI → Review → Approve → Kafka → Worker → SSH → Verify,

@@ -64,7 +64,6 @@ class Settings:
         self.worker_token = _env("WORKER_TOKEN")
 
         # Kafka
-        self.kafka_enabled = _bool("KAFKA_ENABLED", True)
         self.kafka_bootstrap = _env("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
         self.kafka_topic = _env("KAFKA_TOPIC", "network-config-jobs")
 
@@ -77,10 +76,3 @@ class Settings:
 
 
 settings = Settings()
-
-
-def reload_settings() -> Settings:
-    """Used by tests after changing environment variables."""
-    global settings
-    settings.__init__()
-    return settings

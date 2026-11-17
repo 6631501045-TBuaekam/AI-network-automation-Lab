@@ -40,9 +40,3 @@ addresses from the picture. On each PC console:
 
 Each new plan removes the previous plan's OSPF and port addresses first, so you can deploy
 them one after another without resetting the routers.
-
-Check that every picture still gives the expected result (stops before Approve):
-
-```bash
-python scripts/test_pictures.py samples/demo
-```

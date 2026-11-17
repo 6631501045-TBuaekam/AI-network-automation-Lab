@@ -27,8 +27,7 @@ SSH, applies the config and checks that OSPF works.
 | `docs/LAB_SETUP.md` | How to build the GNS3 lab |
 | `docs/REPORT.md` | Short report and test results |
 | `evidence/` | Screenshots from the live test |
-| `samples/demo/` | 8 pictures for a live demo, including the exam diagram (check them with `scripts/test_pictures.py`) |
-| `tests/` | 62 automated tests |
+| `samples/demo/` | 8 pictures for a live demo, including the exam diagram |
 
 ## 1. Build the lab
 Follow [docs/LAB_SETUP.md](docs/LAB_SETUP.md).
@@ -122,8 +121,7 @@ checks caught it, so nothing was deployed).
 (opentyphoon.ai). Typhoon OCR reads the text in the picture first, and the AI gets that
 text with the picture, so it copies the numbers instead of guessing them. If the AI's
 network is not in the OCR text, a warning tells you to check it. If OCR is down, the AI
-still runs. In testing, DeepSeek Flash went from 4 to 6 of 6 clear hard tests right
-with OCR on.
+still runs. It helps most with hand-drawn or blurry pictures.
 
 Ollama on Linux must accept outside connections: `sudo systemctl edit ollama` → add
 `Environment="OLLAMA_HOST=0.0.0.0"` under `[Service]` → `sudo systemctl restart ollama`.
@@ -158,10 +156,3 @@ answer, and that everything is running.
 worker saves a backup first. If a command fails it stops without saving, so a router
 `reload` brings back the last good config. A wrong password is never retried, so the
 router doesn't lock the account.
-
-## 8. Tests
-```bash
-pip install -r backend/requirements.txt -r worker/requirements.txt pytest
-python -m pytest -q tests/     # 62 passed
-```
-The tests include a full run against fake routers over real SSH.

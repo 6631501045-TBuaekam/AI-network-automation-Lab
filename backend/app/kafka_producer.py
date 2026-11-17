@@ -51,20 +51,4 @@ class JobProducer:
         return result
 
 
-class InMemoryProducer:
-    """Used by tests (KAFKA_ENABLED=false): keeps messages in a list."""
-
-    def __init__(self) -> None:
-        self.messages: list = []
-
-    def send(self, message: dict) -> dict:
-        self.messages.append(message)
-        return {"topic": settings.kafka_topic, "partition": 0, "offset": len(self.messages) - 1}
-
-
-producer = JobProducer() if settings.kafka_enabled else InMemoryProducer()
-
-
-def set_producer(p) -> None:
-    global producer
-    producer = p
+producer = JobProducer()
