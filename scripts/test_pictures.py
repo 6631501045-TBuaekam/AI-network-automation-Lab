@@ -5,7 +5,7 @@ Checks the values (router IPs, PC IPs and gateways, OSPF process, area, router I
 hand correction gets a warning, that clear pictures are not blocked, that red ink is not taken for
 a correction, and that unclear pictures are stopped. Stops before Approve - routers are never changed.
 
-    python scripts/test_pictures.py samples/hard-tests samples/edge-tests
+    python scripts/test_pictures.py samples/demo
     (needs the app running: docker compose up -d; API address: env API, default localhost:8000)"""
 import ipaddress, json, os, re, sys, time
 import httpx

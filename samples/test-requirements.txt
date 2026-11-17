@@ -1,6 +1,0 @@
-PC1: 192.168.10.10/24, gateway 192.168.10.1
-R1: LAN 192.168.10.1/24, link to R2 172.16.12.1/30
-R2: link to R1 172.16.12.2/30, LAN 192.168.20.1/24
-PC2: 192.168.20.10/24, gateway 192.168.20.1
-Routing: OSPFv2 process 10, Area 0. R1 router ID 11.11.11.11, R2 router ID 22.22.22.22.
-Advertise all three networks via OSPF. LAN-facing OSPF interfaces passive. No static routes.

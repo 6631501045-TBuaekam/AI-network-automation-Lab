@@ -27,7 +27,7 @@ SSH, applies the config and checks that OSPF works.
 | `docs/LAB_SETUP.md` | How to build the GNS3 lab |
 | `docs/REPORT.md` | Short report and test results |
 | `evidence/` | Screenshots from the live test |
-| `samples/` | The exam diagram and its requirements as text. `demo/`: 8 pictures for a live demo. `exam-style-tests/`, `hard-tests/`, `edge-tests/`: harder test pictures (run with `scripts/test_pictures.py`) |
+| `samples/demo/` | 8 pictures for a live demo, including the exam diagram (check them with `scripts/test_pictures.py`) |
 | `tests/` | 61 automated tests |
 
 ## 1. Build the lab
@@ -82,8 +82,8 @@ the routers' management IPs.
 ## 4. How to use it
 1. Start with routers that have only management SSH set up (see the lab setup).
 2. Open the web page and paste the admin token (top right). The health box turns green.
-3. Choose the diagram (e.g. `samples/exam-topology.png`). Paste the requirements
-   (e.g. `samples/exam-requirements.txt`) into "Written requirements".
+3. Choose the diagram (e.g. `samples/demo/D1-exam-official.png`). "Written requirements" is
+   optional: paste text there only if something is not in the picture.
    Don't copy the table from the PDF - the rows get mixed up and the AI misses an address.
 4. Click **Run**. It uploads, runs the AI, reads the port names from the routers and
    checks everything. It stops before approval.

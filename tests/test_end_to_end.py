@@ -60,7 +60,7 @@ def test_full_workflow(env):
     assert h.get("/").status_code == 200
 
     # 1 upload
-    with open(os.path.join(ROOT, "samples", "exam-topology.png"), "rb") as fh:
+    with open(os.path.join(ROOT, "samples", "demo", "D1-exam-official.png"), "rb") as fh:
         plan = h.post("/api/diagrams", files={"file": ("topo.png", fh, "image/png")}).json()
     assert plan["status"] == "UPLOADED"
     bad = h.post("/api/diagrams", files={"file": ("x.png", b"not an image", "image/png")})
@@ -168,7 +168,7 @@ def test_second_run_replaces_previous_config(env):
     h, r1 = env["http"], env["lab"].routers["R1"]
     assert r1.ospf and "10.1.0.0/24" in {str(n) for n, _ in r1.ospf["networks"]}  # from run 1
     pos = len(env["mem"].messages)
-    with open(os.path.join(ROOT, "samples", "exam-topology.png"), "rb") as fh:
+    with open(os.path.join(ROOT, "samples", "demo", "D1-exam-official.png"), "rb") as fh:
         plan = h.post("/api/diagrams", files={"file": ("topo.png", fh, "image/png")}).json()
     pid = plan["id"]
     plan = h.post(f"/api/plans/{pid}/generate").json()
@@ -202,7 +202,7 @@ def _deploy_new_plan(env, change):
     """Upload, generate (with a topology edit), confirm, approve and deploy one plan."""
     h = env["http"]
     pos = len(env["mem"].messages)
-    with open(os.path.join(ROOT, "samples", "exam-topology.png"), "rb") as fh:
+    with open(os.path.join(ROOT, "samples", "demo", "D1-exam-official.png"), "rb") as fh:
         pid = h.post("/api/diagrams", files={"file": ("topo.png", fh, "image/png")}).json()["id"]
     plan = h.post(f"/api/plans/{pid}/generate").json()
     h.put(f"/api/plans/{pid}/topology", headers=ADMIN, json={"topology": change(plan["topology"])})
@@ -235,10 +235,10 @@ def test_next_plan_removes_ospf_process_of_previous_deploy(env):
 
 def test_generate_uses_requirements_pasted_after_upload(env):
     h = env["http"]
-    with open(os.path.join(ROOT, "samples", "exam-topology.png"), "rb") as fh:
+    with open(os.path.join(ROOT, "samples", "demo", "D1-exam-official.png"), "rb") as fh:
         plan = h.post("/api/diagrams", files={"file": ("topo.png", fh, "image/png")}).json()
     assert plan["requirements"] == ""
-    text = open(os.path.join(ROOT, "samples", "exam-requirements.txt"), encoding="utf-8").read()
+    text = open(os.path.join(ROOT, "tests", "fixtures", "exam-requirements.txt"), encoding="utf-8").read()
     plan = h.post(f"/api/plans/{plan['id']}/generate", json={"requirements": text}).json()
     assert plan["requirements"] == text and plan["status"] == "ANALYZED"
     plan = h.post(f"/api/plans/{plan['id']}/generate").json()  # no body: keeps the stored text
