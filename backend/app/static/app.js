@@ -223,7 +223,28 @@ function renderApproval(p) {
   else $("#approvalInfo").textContent = p?.status === "REVIEWED" ? "Validation passed - waiting for administrator approval." : "Approval becomes available after a successful review.";
 }
 
+/* The system configures the routers only. Each picture has its own PC addresses, so show the
+   VPCS command for every PC of this plan (address, mask from its network, gateway). */
+function pcCommands() {
+  const hosts = state.plan?.validation?.model?.hosts || {};
+  const out = {};
+  for (const [id, h] of Object.entries(hosts)) {
+    const prefix = String(h.network || "").split("/")[1];
+    if (h.ip && prefix) out[id] = `ip ${h.ip}/${prefix}${h.gateway ? " " + h.gateway : ""}`;
+  }
+  return out;
+}
+
+function renderPcCommands() {
+  const cmds = Object.entries(pcCommands());
+  $("#pcCmds").innerHTML = cmds.length
+    ? `<div class="msg warning"><b>Set the PCs to this plan's addresses</b> (the system configures the routers only). On each PC console:
+       <pre class="code">${cmds.map(([id, c]) => `${esc(id)}> ${esc(c)}`).join("\n")}</pre></div>`
+    : "";
+}
+
 function renderJobs() {
+  renderPcCommands();
   const jobs = state.jobs;
   const latestDep = jobs.find((j) => j.deployment_id)?.deployment_id;
   const depJobs = jobs.filter((j) => j.deployment_id === latestDep);
@@ -265,7 +286,8 @@ function jobDetail(j) {
   const r = j.result;
   if (j.job_type === "verify" && r?.checks) {
     h += `<table class="tbl vchecks"><thead><tr><th>Verification check</th><th>Result</th><th>Detail</th></tr></thead><tbody>${r.checks.map((c) => `<tr><td>${esc(c.name)}</td><td><span class="badge b-${c.ok ? "pass" : "fail"}">${c.ok ? "PASS" : "FAIL"}</span></td><td class="mono">${esc(c.detail)}</td></tr>`).join("")}
-      ${(r.ping_checks || []).map((p) => `<tr><td>router ping ${esc(p.source)} → ${esc(p.target)} (${esc(p.host)}) - informational</td><td><span class="badge b-${p.success_rate > 0 ? "pass" : "warn"}">${p.success_rate ?? "?"}%</span></td><td></td></tr>`).join("")}</tbody></table>`;
+      ${(r.ping_checks || []).map((p) => `<tr><td>router ping ${esc(p.source)} → ${esc(p.target)} (${esc(p.host)}) - informational</td><td><span class="badge b-${p.success_rate > 0 ? "pass" : "warn"}">${p.success_rate ?? "?"}%</span></td>
+        <td>${p.success_rate ? "" : `no reply: ${esc(p.host)} does not have ${esc(p.target)} yet${pcCommands()[p.host] ? ` - on ${esc(p.host)} run <span class="mono">${esc(pcCommands()[p.host])}</span>` : ""}`}</td></tr>`).join("")}</tbody></table>`;
   }
   if (j.output) h += `<details class="output" data-job="${esc(j.id)}"${state.outputOpen.has(j.id) ? " open" : ""}><summary>Device output</summary><pre class="code">${esc(j.output)}</pre></details>`;
   return h;
