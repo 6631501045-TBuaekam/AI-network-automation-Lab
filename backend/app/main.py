@@ -301,9 +301,16 @@ def get_discovery():
     for dev in inv:
         last_job = db.one("SELECT id, status, created_at, finished_at, error FROM jobs "
                           "WHERE job_type='discover' AND device_id=? ORDER BY created_at DESC LIMIT 1", (dev,))
-        d = latest.get(dev)
+        d, before_deploy = latest.get(dev), False
+        if d is None:
+            # Plans never use a read older than the router's last deploy, but the table still
+            # shows it (marked) instead of empty columns.
+            row = db.one("SELECT result FROM jobs WHERE job_type='discover' AND device_id=? AND "
+                         "status='SUCCESS' ORDER BY finished_at DESC LIMIT 1", (dev,))
+            d, before_deploy = (row or {}).get("result"), bool(row)
         out.append({"device_id": dev, "host": inv[dev]["host"], "last_job": last_job,
-                    "result": d, "data_interfaces": data_interfaces(d) if d else []})
+                    "result": d, "data_interfaces": data_interfaces(d) if d else [],
+                    "before_last_deploy": before_deploy})
     return out
 
 

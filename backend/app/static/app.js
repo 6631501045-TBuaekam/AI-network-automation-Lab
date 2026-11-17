@@ -171,7 +171,7 @@ function render() {
   $("#discoveryTbl tbody").innerHTML = state.discovery.map((d) => {
     const s = d.last_job?.status || "—", r = d.result;
     return `<tr><td><b>${esc(d.device_id)}</b></td><td class="mono">${esc(d.host)}</td><td><span class="badge b-${esc(s)}">${esc(s)}</span>${d.last_job?.error ? `<div class="muted">${esc(d.last_job.error)}</div>` : ""}</td>
-      <td class="mono">${esc(r?.mgmt_interface || "")} ${r?.mgmt_network ? `<span class="muted">${esc(r.mgmt_network)}</span>` : ""}</td><td class="mono">${esc((d.data_interfaces || []).join(", "))}</td></tr>`;
+      <td class="mono">${esc(r?.mgmt_interface || "")} ${r?.mgmt_network ? `<span class="muted">${esc(r.mgmt_network)}</span>` : ""}</td><td class="mono">${esc((d.data_interfaces || []).join(", "))}${d.before_last_deploy ? `<div class="muted">read before the last deploy - the next Generate reads it again</div>` : ""}</td></tr>`;
   }).join("");
 
   renderReview(p); renderApproval(p); renderJobs();
