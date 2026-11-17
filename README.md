@@ -27,7 +27,7 @@ SSH, applies the config and checks that OSPF works.
 | `docs/LAB_SETUP.md` | How to build the GNS3 lab |
 | `docs/REPORT.md` | Short report and test results |
 | `evidence/` | Screenshots from the live test |
-| `samples/` | Sample diagrams with their requirements as text, plus harder test pictures in `samples/hard-tests/` and `samples/edge-tests/` (run with `scripts/test_pictures.py`) |
+| `samples/` | The exam diagram and its requirements as text. `demo/`: 8 pictures for a live demo. `exam-style-tests/`, `hard-tests/`, `edge-tests/`: harder test pictures (run with `scripts/test_pictures.py`) |
 | `tests/` | 58 automated tests |
 
 ## 1. Build the lab
