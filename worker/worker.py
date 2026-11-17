@@ -199,6 +199,13 @@ def do_deploy_pc(job, auth, be, pc):
         return "FAILED", "", None, f"cannot reach {dev}'s console {pc['console_host']}:{pc['console_port']}: {exc}"
     try:
         be.event(jid, f"console connected to {dev}; approved by {auth.get('approved_by')}")
+        # Only ever type on a PC: VPCS answers `show ip` with IP/MASK, a router does not.
+        # A wrong console port in the inventory must never send commands to a router.
+        first = con.send("show ip")
+        if "IP/MASK" not in first:
+            return "FAILED", f"{dev}> show ip\n{first}", None, \
+                f"console {pc['console_host']}:{pc['console_port']} is not a VPCS PC - nothing was " \
+                f"typed. Check the console port of {dev} in inventory/devices.yaml"
         for line in auth["config_lines"]:
             out.append(f"{dev}> {line}\n{con.send(line)}")
         shown = con.send("show ip")
