@@ -2,7 +2,7 @@
 const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const fmt = (t) => (t ? new Date(t * 1000).toLocaleTimeString() : "—");
-const state = { planId: localStorage.getItem("planId"), plan: null, jobs: [], discovery: [], expanded: new Set(), cfgTab: null, file: null };
+const state = { planId: localStorage.getItem("planId"), plan: null, jobs: [], discovery: [], expanded: new Set(), outputOpen: new Set(), jobsHtml: "", cfgTab: null, file: null };
 
 function toast(msg, err = false) {
   const d = document.createElement("div");
@@ -239,7 +239,7 @@ function renderJobs() {
     $("#summary").innerHTML = `<div class="summary">${tiles.map(([t, b, s]) => `<div class="tile"><span class="muted">${esc(t)}</span><b><span class="badge b-${s}">${s}</span></b><div class="mono">${b}</div></div>`).join("")}</div>`;
     $("#deployInfo").textContent = `latest deployment ${latestDep}`;
   } else $("#summary").innerHTML = "";
-  $("#jobsTbl tbody").innerHTML = jobs.map((j) => {
+  const html = jobs.map((j) => {
     const k = j.kafka_meta || {};
     let row = `<tr class="job" data-job="${esc(j.id)}"><td class="mono">${esc(j.id)}</td><td>${esc(j.job_type)}</td><td><b>${esc(j.device_id)}</b></td>
       <td><span class="badge b-${esc(j.status)}">${esc(j.status)}</span></td><td>${fmt(j.created_at)}</td><td>${fmt(j.started_at)}</td><td>${fmt(j.finished_at)}</td>
@@ -247,7 +247,16 @@ function renderJobs() {
     if (state.expanded.has(j.id)) row += `<tr class="detail"><td colspan="8">${jobDetail(j)}</td></tr>`;
     return row;
   }).join("") || `<tr><td colspan="8" class="muted">No jobs yet</td></tr>`;
+  // The table refreshes every few seconds: only redraw it when something changed, so an open
+  // "Device output" box, its scroll position and any selected text stay as they are.
+  if (html === state.jobsHtml) return;
+  state.jobsHtml = html;
+  $("#jobsTbl tbody").innerHTML = html;
   document.querySelectorAll("tr.job").forEach((tr) => (tr.onclick = () => { const id = tr.dataset.job; state.expanded.has(id) ? state.expanded.delete(id) : state.expanded.add(id); renderJobs(); }));
+  document.querySelectorAll("details.output").forEach((d) => (d.ontoggle = () => {
+    d.open ? state.outputOpen.add(d.dataset.job) : state.outputOpen.delete(d.dataset.job);
+    state.jobsHtml = "";  // the remembered table no longer matches what is on screen
+  }));
 }
 
 function jobDetail(j) {
@@ -258,7 +267,7 @@ function jobDetail(j) {
     h += `<table class="tbl vchecks"><thead><tr><th>Verification check</th><th>Result</th><th>Detail</th></tr></thead><tbody>${r.checks.map((c) => `<tr><td>${esc(c.name)}</td><td><span class="badge b-${c.ok ? "pass" : "fail"}">${c.ok ? "PASS" : "FAIL"}</span></td><td class="mono">${esc(c.detail)}</td></tr>`).join("")}
       ${(r.ping_checks || []).map((p) => `<tr><td>router ping ${esc(p.source)} → ${esc(p.target)} (${esc(p.host)}) - informational</td><td><span class="badge b-${p.success_rate > 0 ? "pass" : "warn"}">${p.success_rate ?? "?"}%</span></td><td></td></tr>`).join("")}</tbody></table>`;
   }
-  if (j.output) h += `<details><summary>Device output</summary><pre class="code">${esc(j.output)}</pre></details>`;
+  if (j.output) h += `<details class="output" data-job="${esc(j.id)}"${state.outputOpen.has(j.id) ? " open" : ""}><summary>Device output</summary><pre class="code">${esc(j.output)}</pre></details>`;
   return h;
 }
 
