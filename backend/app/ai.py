@@ -65,7 +65,8 @@ Rules:
   the old one (e.g. a PC gateway written as the router's old address), the picture
   contradicts itself: do NOT pick one side - add a "blocking" ambiguity naming both values.
 - Management networks (labelled mgmt/management, dashed cables, "not part of OSPF") are not
-  part of the plan: leave them out of networks, interfaces and links.
+  part of the plan: leave them out of networks, interfaces and links, and do not write an
+  ambiguity about management access - it is handled outside the plan.
 - routing: fill protocol/process_id/area/router_ids ONLY from what the image or the written
   requirements state. If a value is not stated, set it to null and add an ambiguity.
 - NEVER guess. Anything unreadable, missing, contradictory or inferred goes into "ambiguities"
@@ -196,12 +197,20 @@ PROVIDERS = {"anthropic": _anthropic, "openai": _openai, "local": _local}
 # admin confirms the mapping), so an AI "ambiguity" about them can never be acted on. Smaller
 # models report one anyway, which would block approval - drop them.
 _IFNAME_AMBIGUITY = re.compile(r"interface[\s_-]*names?", re.I)
+_MGMT_AMBIGUITY = re.compile(r"\bmanagement\b|\bmgmt\b", re.I)
 
 
 def _drop_interface_name_ambiguities(ambiguities: list) -> list:
+    """Also drops warnings about management access: management is never part of the plan
+    (it is reached separately and checked by discovery), so such a note asks nothing of the
+    reviewer. A blocking item that mentions management is kept."""
     kept = []
     for a in ambiguities:
-        if isinstance(a, dict) and _IFNAME_AMBIGUITY.search(f"{a.get('item', '')} {a.get('issue', '')}"):
+        text = f"{a.get('item', '')} {a.get('issue', '')}" if isinstance(a, dict) else ""
+        if isinstance(a, dict) and _IFNAME_AMBIGUITY.search(text):
+            continue
+        if (isinstance(a, dict) and _MGMT_AMBIGUITY.search(text)
+                and str(a.get("severity", "")).lower() != "blocking"):
             continue
         kept.append(a)
     return kept

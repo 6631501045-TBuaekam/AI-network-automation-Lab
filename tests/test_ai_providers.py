@@ -201,3 +201,11 @@ def test_inferred_addresses_block_and_corrections_warn():
     # the AI already warned about PC1's gateway: no second warning
     topo["ambiguities"] = [{"item": "PC1 default gateway", "issue": "inferred", "severity": "warning"}]
     assert "PC1 gateway" not in {a["item"] for a in ai._source_checks(topo)}
+
+
+def test_management_warnings_are_dropped_but_blocking_kept():
+    amb = [{"item": "Management SSH access", "issue": "provided independently; none in the plan", "severity": "warning"},
+           {"item": "MGMT interface addresses", "issue": "not shown", "severity": "blocking"},
+           {"item": "PC1 gateway", "issue": "inferred", "severity": "warning"}]
+    kept = [a["item"] for a in ai._drop_interface_name_ambiguities(amb)]
+    assert kept == ["MGMT interface addresses", "PC1 gateway"]
