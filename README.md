@@ -1,4 +1,4 @@
-# AI Network Automation (OSPF)
+# AI Network Automation
 
 Upload a picture of a network diagram. An AI reads it, and the system writes the Cisco
 router config. An admin checks and approves it. Then a worker logs in to the routers over
