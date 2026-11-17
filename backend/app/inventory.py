@@ -24,6 +24,22 @@ def load_inventory(path: str | None = None) -> dict:
     return out
 
 
+def load_pcs(path: str | None = None) -> dict:
+    """Optional `pcs:` section: the GNS3 console of each lab PC (VPCS). When a PC is listed,
+    Deploy also sets its address, so every plan works without typing on the PCs."""
+    try:
+        with open(path or settings.inventory_path, encoding="utf-8") as fh:
+            data = yaml.safe_load(fh) or {}
+    except FileNotFoundError:
+        return {}
+    out = {}
+    for pc_id, d in (data.get("pcs") or {}).items():
+        d = d or {}
+        if d.get("console_host") and d.get("console_port"):
+            out[str(pc_id)] = {"console_host": str(d["console_host"]), "console_port": int(d["console_port"])}
+    return out
+
+
 def _norm(name: str) -> str:
     n = re.sub(r"[^a-z0-9]", "", str(name or "").lower())
     m = re.fullmatch(r"router(\d+)", n)

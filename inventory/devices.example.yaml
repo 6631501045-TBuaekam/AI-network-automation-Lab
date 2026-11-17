@@ -15,3 +15,14 @@ devices:
   R2:
     host: "<R2_MGMT_IP>"      # R2 management IP, e.g. 192.168.x.12
     port: 22
+
+# Optional - lab PCs (GNS3 VPCS). With their console listed, Deploy also gives the PCs the
+# plan's addresses, so you never type on the PCs. Find the port in GNS3: right-click the PC >
+# "Show node information" (Console port). Leave this out to set the PCs by hand.
+# pcs:
+#   PC1:
+#     console_host: "<GNS3_SERVER_IP>"
+#     console_port: 5000
+#   PC2:
+#     console_host: "<GNS3_SERVER_IP>"
+#     console_port: 5001

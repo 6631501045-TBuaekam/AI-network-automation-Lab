@@ -25,8 +25,9 @@ what the AI assumed.
 
 ## Deploying one of them
 
-The routers are set by the system. The PCs (VPCS) are not: before the ping, give them the
-addresses from the picture. On each PC console:
+With the PCs' consoles listed under `pcs:` in `inventory/devices.yaml`, Deploy sets the PCs
+too, so you can deploy D1-D7 in any order and just ping. Without it, set the PCs by hand
+before the ping:
 
 | # | PC1 | PC2 | Ping from PC1 |
 |---|---|---|---|

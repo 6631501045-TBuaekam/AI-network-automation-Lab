@@ -20,9 +20,9 @@ from . import db
 from . import kafka_producer as kp
 from .ai import AIError, analyze_diagram
 from .config import settings
-from .generator import data_interfaces, generate_configs, suggest_mapping
+from .generator import data_interfaces, generate_configs, pc_configs, suggest_mapping
 from .gns3 import lab_check
-from .inventory import load_inventory
+from .inventory import load_inventory, load_pcs
 from .topology import build_model
 from .validator import validate
 
@@ -366,6 +366,8 @@ def review(plan_id: str):
         imap, notes = suggest_mapping(model, discoveries, inv, lab["ports"] if lab else None)
         confirmed = False
     configs = generate_configs(model, imap, plan_id, settings.ospf_transit_p2p, discoveries)
+    if configs:  # the lab PCs get this plan's addresses too (only PCs with a console in the inventory)
+        configs.update(pc_configs(model, load_pcs(), plan_id))
     result = validate(model, issues, imap, confirmed, configs, discoveries, inv,
                       settings.discovery_max_age_min, lab)
     result["mapping_notes"] = notes
@@ -590,6 +592,8 @@ def _after_result(job: dict) -> None:
                           (dep_id,)) == 1:
                 plan = db.one("SELECT * FROM plans WHERE id=?", (job["plan_id"],))
                 for dev, cfg in sorted(plan["configs"].items()):
+                    if cfg.get("kind") == "pc":
+                        continue  # routers verify OSPF and ping the PCs; PCs need no job of their own
                     v = dispatch("verify", dev, plan["id"], dep_id, cfg["sha256"], plan["approval_hash"])
                     if v["status"] == "FAILED":
                         _finish_deployment(dep_id, "FAILED")

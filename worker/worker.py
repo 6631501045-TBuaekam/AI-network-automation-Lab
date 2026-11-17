@@ -24,6 +24,7 @@ import yaml
 
 from parsers import (evaluate_verification, parse_cdp_neighbors, parse_ip_int_brief,
                      parse_ip_interface_address, parse_ospf_processes, parse_ping)
+from pc_console import PCConsole, parse_show_ip
 from ssh_client import DeviceError, IOSSession
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s worker: %(message)s")
@@ -109,6 +110,12 @@ def load_inventory():
         return (yaml.safe_load(fh) or {}).get("devices") or {}
 
 
+def load_pcs():
+    """Optional `pcs:` section: GNS3 console host/port of each lab PC."""
+    with open(INVENTORY_PATH, encoding="utf-8") as fh:
+        return (yaml.safe_load(fh) or {}).get("pcs") or {}
+
+
 def credentials(device_id: str) -> dict:
     key = device_id.upper().replace("-", "_")
     user = env(f"{key}_SSH_USERNAME") or env("ROUTER_SSH_USERNAME")
@@ -181,8 +188,36 @@ def unremoved_ospf(lines: list, protocols_text: str) -> list:
     return [p for p in parse_ospf_processes(protocols_text) if p not in handled]
 
 
+def do_deploy_pc(job, auth, be, pc):
+    """Give a lab PC this plan's address through its GNS3 console, then read it back."""
+    dev, jid = job["device_id"], job["job_id"]
+    exp = auth["expected"]
+    out = []
+    try:
+        con = PCConsole(pc["console_host"], int(pc["console_port"]))
+    except OSError as exc:
+        return "FAILED", "", None, f"cannot reach {dev}'s console {pc['console_host']}:{pc['console_port']}: {exc}"
+    try:
+        be.event(jid, f"console connected to {dev}; approved by {auth.get('approved_by')}")
+        for line in auth["config_lines"]:
+            out.append(f"{dev}> {line}\n{con.send(line)}")
+        shown = con.send("show ip")
+        out.append(f"{dev}> show ip\n{shown}")
+    finally:
+        con.close()
+    got = parse_show_ip(shown)
+    want = {"ip": exp["ip"], "prefix": exp["prefix"], "gateway": exp["gateway"]}
+    if got != want:
+        return "FAILED", "\n\n".join(out), got, f"{dev} shows {got}, expected {want}"
+    be.event(jid, f"{dev} set to {exp['ip']}/{exp['prefix']} gateway {exp['gateway']}")
+    return "SUCCESS", "\n\n".join(out), got, None
+
+
 def do_deploy(job, auth, be, inv):
     dev, jid = job["device_id"], job["job_id"]
+    pcs = load_pcs()
+    if dev in pcs and dev not in inv:
+        return do_deploy_pc(job, auth, be, pcs[dev])
     lines = auth["config_lines"]
     out = []
     os.makedirs(os.path.join(DATA_DIR, "backups"), exist_ok=True)

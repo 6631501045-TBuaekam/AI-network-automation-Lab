@@ -24,6 +24,7 @@ ALLOWED = [re.compile(p) for p in (
     rf"^ passive-interface {IFN}$",
     r"^end$",
 )]
+PC_ALLOWED = re.compile(rf"^ip {IP}/\d{{1,2}} {IP}$")  # a lab PC: address/prefix gateway only
 
 CATEGORIES = ["addressing", "subnet", "interface_mapping", "ospf", "management", "safety", "ai_ambiguity"]
 LAB_CATEGORY = "gns3_lab"  # shown only when the GNS3 cross-check is enabled
@@ -109,7 +110,8 @@ def validate(model: dict, issues: list, interface_map: dict, mapping_confirmed: 
         add("ospf", "error", "no router-to-router link: OSPF adjacency is impossible")
     if not routing.get("passive_lan_interfaces", True):
         add("ospf", "warning", "LAN interfaces will not be passive")
-    for dev, cfg in (configs or {}).items():
+    router_cfgs = {d: c for d, c in (configs or {}).items() if c.get("kind") != "pc"}
+    for dev, cfg in router_cfgs.items():
         expected = {ipaddress.ip_network(i["network"]) for i in routers[cfg["router"]]["interfaces"]}
         adv_nets = {ipaddress.ip_network(f"{n['address']}/{_wc_to_prefix(n['wildcard'])}") for n in cfg["ospf"]["networks"]}
         if adv_nets != expected:
@@ -120,7 +122,7 @@ def validate(model: dict, issues: list, interface_map: dict, mapping_confirmed: 
         if any(i["name"] in cfg["ospf"]["passive"] for i in cfg["interfaces"] if i["role"] == "transit"):
             add("ospf", "error", f"{dev}: a router-to-router interface is passive - adjacency would fail")
     all_adv = set()
-    for cfg in (configs or {}).values():
+    for cfg in router_cfgs.values():
         all_adv |= {f"{n['address']}/{_wc_to_prefix(n['wildcard'])}" for n in cfg["ospf"]["networks"]}
     for n in lans + transit:
         if configs and n not in all_adv:
@@ -128,6 +130,11 @@ def validate(model: dict, issues: list, interface_map: dict, mapping_confirmed: 
 
     # ---- safety: command allow-list, no static routes, never touch management
     for dev, cfg in (configs or {}).items():
+        if cfg.get("kind") == "pc":
+            for ln in cfg["lines"]:
+                if not PC_ALLOWED.match(ln):
+                    add("safety", "error", f"{dev}: PC command not allowed: '{ln}'")
+            continue
         mgmt = (discoveries.get(dev) or {}).get("mgmt_interface")
         for ln in cfg["lines"]:
             if not any(p.match(ln) for p in ALLOWED):

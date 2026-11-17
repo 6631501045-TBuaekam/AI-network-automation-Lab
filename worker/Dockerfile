@@ -5,7 +5,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY worker.py ssh_client.py parsers.py ./
+COPY worker.py ssh_client.py parsers.py pc_console.py ./
 RUN useradd --uid 10001 --create-home netauto && mkdir -p /data && chown netauto /data
 USER netauto
 

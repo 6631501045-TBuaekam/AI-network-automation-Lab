@@ -236,6 +236,11 @@ function pcCommands() {
 }
 
 function renderPcCommands() {
+  const auto = Object.entries(state.plan?.configs || {}).filter(([, c]) => c.kind === "pc").map(([id]) => id);
+  if (auto.length) {
+    $("#pcCmds").innerHTML = `<div class="msg ok">${auto.map(esc).join(" and ")} get this plan's addresses automatically on Deploy (see their tabs in Review).</div>`;
+    return;
+  }
   const cmds = Object.entries(pcCommands());
   $("#pcCmds").innerHTML = cmds.length
     ? `<div class="msg warning"><b>Set the PCs to this plan's addresses</b> (the system configures the routers only). On each PC console:

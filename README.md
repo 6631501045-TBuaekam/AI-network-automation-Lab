@@ -43,7 +43,8 @@ In `.env`, fill in:
 * `ROUTER_SSH_PASSWORD` - the routers' `netadmin` password.
 
 In `inventory/devices.yaml`, replace `<R1_MGMT_IP>` and `<R2_MGMT_IP>` with the routers'
-management IPs.
+management IPs. Optional: fill in the `pcs:` part (the PCs' GNS3 console ports) so Deploy
+sets the PCs too.
 
 Never share `.env` - it holds passwords and keys.
 
@@ -91,9 +92,12 @@ the routers' management IPs.
 6. Type the approver's name, tick the box, click **Approve**.
 7. Click **Deploy**. The jobs turn SUCCESS: first deploy, then verify (OSPF neighbors FULL,
    remote LAN learned).
-8. The system sets up the routers only. Give the PCs this plan's addresses with the
-   commands shown under **Deploy** (e.g. `ip 10.0.0.10/24 10.0.0.1`), then on PC1
-   `ping 10.2.0.10` - it replies. A router ping of 0% in verify means a PC is not set yet.
+8. On PC1, `ping 10.2.0.10` - it replies.
+
+**The PCs:** if their GNS3 consoles are listed under `pcs:` in `inventory/devices.yaml`,
+Deploy also gives PC1 and PC2 the plan's addresses (shown as their own tabs in Review and
+approved with the routers). Every picture then works without typing on the PCs.
+Without `pcs:`, the Deploy box shows the commands to type on each PC.
 
 You can also click the buttons one by one: Upload → Generate → Review → Approve → Deploy.
 

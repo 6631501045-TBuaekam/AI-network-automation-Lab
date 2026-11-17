@@ -174,6 +174,25 @@ def expected_state(model: dict, rid: str, if_map: dict) -> dict:
             "ping_checks": ping}
 
 
+def pc_configs(model: dict, pcs: dict, plan_id: str) -> dict:
+    """VPCS command for every PC of the plan that has a console in the inventory:
+    `ip <address>/<prefix> <gateway>`. Approved and deployed together with the routers."""
+    by_norm = {_norm(k): k for k in pcs}
+    out = {}
+    for hid, h in (model.get("hosts") or {}).items():
+        pc = by_norm.get(_norm(hid))
+        if not pc or not h.get("gateway"):
+            continue
+        prefix = str(h["network"]).split("/")[1]
+        lines = [f"ip {h['ip']}/{prefix} {h['gateway']}"]
+        body = "\n".join(lines) + "\n"
+        text = f"! Plan {plan_id} | {pc} (lab PC) | set through its GNS3 console on Deploy\n" + body
+        out[pc] = {"kind": "pc", "device_id": pc, "router": None, "text": text, "lines": lines,
+                   "sha256": hashlib.sha256(body.encode()).hexdigest(),
+                   "expected": {"ip": h["ip"], "prefix": int(prefix), "gateway": str(h["gateway"])}}
+    return out
+
+
 def generate_configs(model: dict, interface_map: dict, plan_id: str, p2p_transit: bool,
                      discoveries: dict | None = None) -> dict:
     out = {}
