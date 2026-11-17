@@ -55,7 +55,7 @@ Then it goes through Kafka to a Python worker, which sets up the routers over SS
 | 9 Job list | PENDING / RUNNING / SUCCESS / FAILED with router, times, output and results |
 | 10 End to end | Shown live: PC1 pings 10.2.0.10 (section 7) |
 
-## 5. Example config (R1 - see evidence/10-run2-review-cleanup.png)
+## 5. Example config (R1 - see evidence/03-review-validation-config.png)
 ```
 no router ospf 1                      <- removes the old plan
 default interface FastEthernet0/0     <- (never the management port)
@@ -95,32 +95,30 @@ R2 is the same with router ID 2.2.2.2 and networks 10.1.0.0/24 and 10.2.0.0/24.
 
 ## 7. Test results
 
-### 7.1 Live test in GNS3 (2026-11-14)
-The routers were reset to the starting state (LAN and link ports empty, no OSPF,
-management on). Everything was done **through the web page**: upload → AI (38 s, nothing
-unclear) → read port names → Review (all checks passed) → confirm ports → Approve →
-Deploy → verify. 80 seconds from upload to done. No router was set up by hand.
+### 7.1 Live acceptance test in GNS3 (2026-11-17)
+Done like the exam's acceptance test. R1 and R2 were reset first: data ports empty and shut
+down, no OSPF, management SSH up (`evidence/00-routers-reset-before-demo.png`). Then
+everything was done **through the web page** with the exam picture, picture only:
+Run (upload → AI → read the routers → Review) → confirm ports → Approve → Deploy → verify.
+About 90 seconds from upload to verified. Nobody typed on a router or a PC.
 
-| Check | Result | Evidence |
+| Check (PDF checklist) | Result | Evidence |
 |---|---|---|
-| Web page accepts the diagram | ✔ | evidence/01-upload.png |
-| AI read the topology | ✔ | evidence/02-ai-json.png |
-| Checks passed, configs shown | ✔ | evidence/03-review.png |
-| Admin approved | ✔ | evidence/04-approve.png |
-| Kafka jobs visible (R1 and R2) | ✔ | evidence/05-kafka.png |
-| Worker set up R1 and R2, verify SUCCESS | ✔ | evidence/06-jobs.png, evidence/06b-verify-details.png |
-| OSPF neighbors FULL (R1 ↔ 2.2.2.2, R2 ↔ 1.1.1.1) | ✔ | evidence/07-ospf-neighbor.png |
-| Other LAN learned by OSPF (R1: 10.2.0.0/24, R2: 10.0.0.0/24) | ✔ | evidence/08-ospf-routes.png |
-| PC1 → 10.2.0.10 ping, 5 of 5 replies | ✔ | evidence/09-ping.png |
+| Frontend loads and accepts the diagram | ✔ | evidence/01-upload-diagram.png |
+| AI produces a valid topology and OSPF plan | ✔ | evidence/02-ai-analysis-json.png, evidence/02-ai-analysis.json |
+| Checks passed, proposed configs shown | ✔ | evidence/03-review-validation-config.png |
+| Explicit administrator approval | ✔ | evidence/04-admin-approval.png |
+| Deployment status (PENDING → RUNNING → SUCCESS, router, times) | ✔ | evidence/05-deployment-job-status.png |
+| Verification results (FULL, routes, process, router ID, passive ports) | ✔ | evidence/06-verification-results.png |
+| Kafka job visible (job ID, device ID, config reference) | ✔ | evidence/07-kafka-jobs-topic.png |
+| OSPF neighbor state FULL (R1 ↔ 2.2.2.2, R2 ↔ 1.1.1.1) | ✔ | evidence/08-ospf-neighbors-full.png |
+| Remote LANs as OSPF routes (R1: 10.2.0.0/24, R2: 10.0.0.0/24) | ✔ | evidence/08-ospf-routes.png |
+| No static routes | ✔ | evidence/08-R1-R2-ospf-show.txt |
+| PC1 → 10.2.0.10, 5 of 5 replies | ✔ | evidence/09-PC1-ping-PC2.png |
 
-Router and PC output is in `evidence/*.txt`; the jobs are in `evidence/run-jobs.json`.
+Full router and PC output is in `evidence/*.txt`.
 
-**Run** was then used twice in a row: first on reset routers, then on top of the first
-run's config. Both finished with all jobs SUCCESS, and the second config started with the
-lines that remove the old plan (evidence/10-run2-review-cleanup.png,
-evidence/11-run2-jobs.png). The ping still worked afterwards.
-
-### 7.2 Live test with different pictures (2026-11-17)
+### 7.2 Different pictures one after another (2026-11-17)
 Three demo pictures were deployed one after another with DeepSeek Flash + Typhoon OCR,
 picture only, nothing typed on the routers or the PCs: `D4-shuffled-table-masks.png`
 (/26, /30, /25 inside one /24), `D2-phone-photo.jpg` (phone photo), then

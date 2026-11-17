@@ -26,7 +26,6 @@ SSH, applies the config and checks that OSPF works.
 | `gns3/` | Commands to paste into the routers and PCs |
 | `docs/LAB_SETUP.md` | How to build the GNS3 lab |
 | `docs/REPORT.md` | Short report and test results |
-| `evidence/` | Screenshots from the live test |
 | `samples/demo/` | 8 pictures for a live demo, including the exam diagram |
 
 ## 1. Build the lab
