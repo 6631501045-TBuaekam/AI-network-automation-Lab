@@ -12,6 +12,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import signal
 import socket
 import time
@@ -172,6 +173,14 @@ def do_discover(job, auth, be, inv):
     return "SUCCESS", "\n\n".join(out), result, None
 
 
+def unremoved_ospf(lines: list, protocols_text: str) -> list:
+    """OSPF processes running on the router that the approved config neither removes
+    (`no router ospf N`) nor configures (`router ospf N`)."""
+    handled = {int(m.group(1)) for ln in lines
+               for m in [re.match(r"^\s*(?:no )?router ospf (\d+)\s*$", ln)] if m}
+    return [p for p in parse_ospf_processes(protocols_text) if p not in handled]
+
+
 def do_deploy(job, auth, be, inv):
     dev, jid = job["device_id"], job["job_id"]
     lines = auth["config_lines"]
@@ -179,6 +188,9 @@ def do_deploy(job, auth, be, inv):
     os.makedirs(os.path.join(DATA_DIR, "backups"), exist_ok=True)
     with open_session(dev, inv) as s:
         be.event(jid, f"SSH connected to {dev}; approved by {auth.get('approved_by')}")
+        leftover = unremoved_ospf(lines, s.send("show ip protocols"))
+        if leftover:
+            return "FAILED", "", {"leftover_ospf": leftover},                 f"the router runs OSPF process {leftover}, which this plan does not remove - the router "                 f"changed after Review (another deploy or a manual change). Nothing was changed. "                 f"Click Run (or Generate + Review) again so the new plan removes it."
         backup = s.send("show running-config", timeout=60)
         path = os.path.join(DATA_DIR, "backups", f"{dev}-{jid}-pre.cfg")
         with open(path, "w", encoding="utf-8") as fh:
@@ -226,6 +238,10 @@ def do_verify(job, auth, be, inv):
         failed = [c["name"] for c in evaluation["checks"] if not c["ok"]]
         be.event(jid, f"verification attempt {attempt}: "
                       + ("all checks passed" if not failed else f"waiting for: {', '.join(failed)}"))
+        # Only the neighbor and the learned routes need time to come up. Anything else (process,
+        # router-id, passive ports, a leftover OSPF process) will not change by waiting.
+        if failed and not any(n.startswith(("OSPF neighbor", "route ")) for n in failed):
+            break
         if evaluation["ok"] or time.time() + VERIFY_INTERVAL > deadline:
             break
         time.sleep(VERIFY_INTERVAL)

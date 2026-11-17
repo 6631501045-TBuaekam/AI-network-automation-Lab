@@ -265,15 +265,14 @@ def generate(plan_id: str, body: GenerateRequest | None = None):
 def _ensure_discovery(topology: dict) -> list:
     inv = _inventory()
     model, _ = build_model(topology, inv)
-    fresh = latest_discoveries()
     jobs = []
     for r in model["routers"].values():
         dev = r.get("inventory_id")
         if not dev:
             continue
-        recent = fresh.get(dev)
-        if recent and time.time() - recent["_finished_at"] < settings.discovery_max_age_min * 60:
-            continue
+        # Always read the router again: anything may have changed it since the last read (a
+        # deploy from another copy of this app, a manual change), and the clean-up in the new
+        # config must remove what is really there. A read takes a few seconds.
         if db.one("SELECT id FROM jobs WHERE job_type='discover' AND device_id=? AND status IN ('PENDING','RUNNING')",
                   (dev,)):
             continue
@@ -348,6 +347,13 @@ def review(plan_id: str):
     inv = _inventory()
     model, issues = build_model(plan["topology"], inv)
     discoveries = latest_discoveries()
+    for rid, r in model["routers"].items():
+        if r.get("inventory_id") and db.one(
+                "SELECT id FROM jobs WHERE job_type='discover' AND device_id=? AND status IN ('PENDING','RUNNING')",
+                (r["inventory_id"],)):
+            issues = issues + [{"category": "management", "severity": "error",
+                                "message": f"{rid}: reading the router (discovery) is still running - "
+                                           "click Review again in a few seconds"}]
     imap = plan.get("interface_map") or {}
     confirmed = bool(plan.get("mapping_confirmed"))
     notes: list = []

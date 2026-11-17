@@ -131,3 +131,13 @@ def test_verification_reads_the_expected_process_and_flags_leftovers():
     assert checks["OSPF process id"]["ok"] and checks["OSPF router-id"]["ok"]
     assert not checks["no other OSPF process"]["ok"]
     assert "70" in checks["no other OSPF process"]["detail"]
+
+
+def test_deploy_refuses_ospf_process_the_plan_does_not_remove():
+    import worker
+    lines = ["no router ospf 10", "no router ospf 99", "default interface Fa0/0", "router ospf 10", " router-id 1.1.1.1"]
+    running = ('Routing Protocol is "ospf 99"\n  Router ID 9.9.9.1\n'
+               'Routing Protocol is "ospf 1"\n  Router ID 1.1.1.1\n')
+    assert worker.unremoved_ospf(lines, running) == [1]
+    assert worker.unremoved_ospf(lines, 'Routing Protocol is "ospf 99"\n') == []
+    assert worker.unremoved_ospf(lines, "") == []
