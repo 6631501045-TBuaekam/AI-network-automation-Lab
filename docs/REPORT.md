@@ -14,10 +14,12 @@ Then it goes through Kafka to a Python worker, which sets up the routers over SS
 |---|---|---|
 | Web page | HTML + JavaScript | Upload, Run, Generate, Review, Approve, Deploy, job list |
 | Backend | Python, FastAPI, SQLite | Calls the AI, writes and checks configs, handles approval, sends jobs to Kafka |
-| AI | Any AI that reads pictures (Gemini, Claude, OpenAI, or a local one). Live test used Qwen2.5-VL 7B (local) | Reads the picture and returns the devices, networks, IPs, links and OSPF settings |
+| AI | Any AI that reads pictures (Gemini, DeepSeek, Claude, OpenAI, or a local one). Tested with Qwen2.5-VL 7B (local) and DeepSeek Flash with Typhoon OCR | Reads the picture and returns the devices, networks, IPs, links and OSPF settings |
 | Kafka | Apache Kafka 3.8, topic `network-config-jobs` | Carries approved jobs to the worker. Kafka UI shows them |
 | Worker | Python, Paramiko | Takes jobs, checks approval again, sets up the routers over SSH, checks OSPF |
+| OCR (optional) | Typhoon OCR | Reads the text in the picture so the AI copies numbers instead of guessing them |
 | GNS3 check (optional) | GNS3 API, read only | Compares the AI's result with the real cables and suggests ports |
+| Lab PCs (optional) | GNS3 console of each VPCS PC | On Deploy, the worker gives the PCs the plan's addresses (approved with the routers) |
 
 ## 3. How a run works
 1. **Upload** - the picture (PNG/JPG) and the requirements text.
@@ -31,7 +33,9 @@ Then it goes through Kafka to a Python worker, which sets up the routers over SS
 5. **Kafka** - one job per router. The job points to the approved config.
 6. **Worker** - takes each job only once, asks the backend to confirm the approval, checks
    the config wasn't changed, backs up the router, applies the config line by line, saves
-   it, and logs in again to prove SSH still works.
+   it, and logs in again to prove SSH still works. If the router changed since Review (for
+   example an old OSPF process is back), it stops without changing anything. If the PCs'
+   consoles are in the inventory, it also sets the PCs to the plan's addresses.
 7. **Verify** - runs `show ip ospf neighbor`, `show ip route ospf` and
    `show ip protocols` until OSPF is up. It checks for FULL neighbors, the other LAN in the
    route table, the router ID and the passive ports.
@@ -116,7 +120,16 @@ run's config. Both finished with all jobs SUCCESS, and the second config started
 lines that remove the old plan (evidence/10-run2-review-cleanup.png,
 evidence/11-run2-jobs.png). The ping still worked afterwards.
 
-### 7.2 Problems found and fixed
+### 7.2 Live test with different pictures (2026-11-17)
+Three demo pictures were deployed one after another with DeepSeek Flash + Typhoon OCR,
+picture only, nothing typed on the routers or the PCs: `D4-shuffled-table-masks.png`
+(/26, /30, /25 inside one /24), `D2-phone-photo.jpg` (phone photo), then
+`D1-exam-official.png`. Each plan removed the previous one, set both PCs, and finished
+with all jobs SUCCESS, OSPF FULL and the other LAN learned on both routers (about 40 s per
+deploy). After D1, PC1 → 10.2.0.10 replied. The unclear picture `D8-UNCLEAR-conflicts.png`
+was stopped at Review, as intended.
+
+### 7.3 Problems found and fixed
 * **SSH sessions left open.** Each job left one SSH session open, so the router ran out
   and refused R1's verify. Fixed in `worker/ssh_client.py`.
 * **Small AIs asking for port names.** Port names come from the routers, so this note is
@@ -124,6 +137,15 @@ evidence/11-run2-jobs.png). The ping still worked afterwards.
 * **Local AI misreading an address.** From the picture alone, Qwen2.5-VL 7B sometimes
   misread one address (the checks caught it). With the requirements text added, it was
   always correct.
+* **AI guessing or misreading values.** The AI must now say which addresses are written
+  in the picture and which it inferred; an inferred router or PC address blocks approval,
+  and every hand correction (crossed-out value) is shown as a warning. Typhoon OCR fixed
+  DeepSeek misreading hand-drawn numbers.
+* **Old OSPF process left on a router.** A router read could come back empty, so the next
+  plan did not remove the old process. Reads now wait for the command's echo, Generate
+  always reads the routers again, and Deploy refuses a router that changed since Review.
+* **PC ping 0% after a new picture.** The PCs kept the last plan's addresses. Deploy now
+  sets them too.
 
 ## 8. Conclusion
 The whole chain works: Upload → AI → Review → Approve → Kafka → Worker → SSH → Verify,
